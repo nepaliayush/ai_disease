@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 221 83% 53%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Neon blue on deep navy — a "cyber/dashboard" dark theme */
+    --background: 222 47% 6%;
+    --foreground: 214 32% 92%;
+    --card: 222 44% 9%;
+    --card-foreground: 214 32% 92%;
+    --popover: 222 44% 9%;
+    --popover-foreground: 214 32% 92%;
+    --primary: 199 89% 60%;
+    --primary-foreground: 222 47% 8%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 213 27% 90%;
+    --muted: 217 33% 15%;
+    --muted-foreground: 215 20% 60%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 213 27% 90%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 217 33% 18%;
+    --input: 217 33% 22%;
+    --ring: 199 89% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+      Helvetica, Arial, sans-serif;
+  }
+  /* Soft neon glow at the top of the viewport in dark mode */
+  .dark body {
+    background-image: radial-gradient(
+      ellipse 80% 45% at 50% -15%,
+      hsl(199 89% 60% / 0.14),
+      transparent
+    );
+    background-attachment: fixed;
+  }
+}
+
+/* Risk band accent colors (stable across themes) */
+.risk-low { color: #22c55e; }
+.risk-elevated { color: #eab308; }
+.risk-moderate { color: #f97316; }
+.risk-high { color: #ef4444; }
+.risk-very-high { color: #dc2626; }

@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Data & artifacts
+backend/data/raw/
+backend/data/processed/
+backend/models/
+backend/reports/
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Misc
+.DS_Store
+*.log
