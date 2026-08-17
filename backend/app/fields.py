@@ -13,6 +13,8 @@ from __future__ import annotations
 DIABETES_FEATURES = [
     "pregnancies", "glucose", "blood_pressure", "skin_thickness", "insulin",
     "bmi", "diabetes_pedigree_function", "age",
+    # Engineered interactions (see training/prepare_datasets.py).
+    "glucose_bmi", "bmi_age", "age_preg",
 ]
 
 HEART_FEATURES = [
@@ -25,6 +27,8 @@ LIVER_FEATURES = [
     "alamine_aminotransferase", "aspartate_aminotransferase", "total_proteins",
     "albumin", "albumin_globulin_ratio",
     "ast_alt_ratio", "direct_bilirubin_ratio",
+    # Additional engineered markers (see training/prepare_datasets.py).
+    "bilirubin_total", "albumin_fraction", "alt_ast_product",
 ]
 
 CKD_FEATURES = [

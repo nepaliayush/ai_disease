@@ -79,6 +79,30 @@ MODEL_SELECTION_METRIC = "cv_auc_mean"  # metric used to pick the deployed clini
 MODEL_SELECTION_TIEBREAK = "roc_auc"  # tiebreak for model selection
 
 # ---------------------------------------------------------------------------
+# Per-disease preprocessing choices.
+# `scaler` is "minmax" or "standard". `log_cols` lists features that receive a
+# log1p transform before scaling (heavily right-skewed markers, e.g. liver
+# enzymes/bilirubin). `threshold_objective` is what the deployed decision
+# threshold is optimized for: "f1" (default) or "balanced_accuracy" (used for
+# the imbalanced liver set so the deployed model does not just predict the
+# majority class).
+# ---------------------------------------------------------------------------
+LIVER_LOG_COLS = [
+    "total_bilirubin", "direct_bilirubin", "alkaline_phosphotase",
+    "alamine_aminotransferase", "aspartate_aminotransferase",
+    "ast_alt_ratio", "direct_bilirubin_ratio", "bilirubin_total",
+    "alt_ast_product",
+]
+
+DISEASE_PREPROCESSING = {
+    "diabetes": {"scaler": "minmax", "log_cols": None, "threshold_objective": "f1"},
+    "heart_disease": {"scaler": "minmax", "log_cols": None, "threshold_objective": "f1"},
+    "liver_disease": {"scaler": "minmax", "log_cols": LIVER_LOG_COLS,
+                      "threshold_objective": "balanced_accuracy"},
+    "ckd": {"scaler": "minmax", "log_cols": None, "threshold_objective": "f1"},
+}
+
+# ---------------------------------------------------------------------------
 # Lifestyle risk adjustment (transparent, rule-based, additive).
 # The clinical training datasets do NOT contain smoking or alcohol features, so
 # these fields cannot feed the models directly. Instead they are applied as an

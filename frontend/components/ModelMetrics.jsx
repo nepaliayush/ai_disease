@@ -9,6 +9,7 @@ import { prettyLabel } from "@/lib/utils";
 
 const METRIC_COLS = [
   { key: "accuracy", label: "Accuracy" },
+  { key: "balanced_accuracy", label: "Balanced Acc." },
   { key: "precision", label: "Precision" },
   { key: "recall", label: "Recall" },
   { key: "f1", label: "F1 Score" },
@@ -19,6 +20,12 @@ export default function ModelMetrics({ diseases, models, metrics }) {
   if (!metrics) return null;
   const labels = Object.fromEntries((diseases || []).map((d) => [d.id, d.label]));
 
+  const fmt = (m, key) => {
+    const v = m[key] * 100;
+    const std = m.holdout_std?.[key] * 100;
+    return std != null ? `${v.toFixed(1)} ± ${std.toFixed(1)}%` : `${v.toFixed(1)}%`;
+  };
+
   return (
     <Card className="shadow-none">
       <CardHeader className="pb-3">
@@ -26,7 +33,8 @@ export default function ModelMetrics({ diseases, models, metrics }) {
           Model performance
         </CardTitle>
         <CardDescription>
-          Holdout-test metrics for each deployed clinical model.
+          Holdout-test metrics (mean ± spread over {metrics ? "repeated random splits" : ""}) for
+          each deployed clinical model.
         </CardDescription>
       </CardHeader>
       <CardContent className="overflow-x-auto">
@@ -57,7 +65,7 @@ export default function ModelMetrics({ diseases, models, metrics }) {
                     key={c.key}
                     className="py-2 text-right tabular-nums text-foreground"
                   >
-                    {(m[c.key] * 100).toFixed(1)}%
+                    {fmt(m, c.key)}
                   </td>
                 ))}
               </tr>

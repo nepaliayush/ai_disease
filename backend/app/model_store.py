@@ -42,6 +42,15 @@ def build_clinical_inputs(payload: dict) -> dict[str, pd.DataFrame]:
             if disease in FIELD_TO_MODEL_FEATURE[field]:
                 model_feature = FIELD_TO_MODEL_FEATURE[field][disease]
                 row[model_feature] = encode_field(field, clinical[field])
+        if disease == "diabetes":
+            # Engineered interactions matching the training-time features.
+            glucose = float(clinical.get("glucose", 0.0))
+            bmi = float(clinical.get("bmi", 0.0))
+            age = float(clinical.get("age", 0.0))
+            pregnancies = float(clinical.get("pregnancies", 0.0))
+            row["glucose_bmi"] = glucose / bmi if bmi > 0 else float("nan")
+            row["bmi_age"] = bmi * age
+            row["age_preg"] = age * pregnancies
         if disease == "liver_disease":
             # Engineered ratios matching the training-time features. Divisions
             # by zero become NaN, which the preprocessor median-imputes.
@@ -49,8 +58,13 @@ def build_clinical_inputs(payload: dict) -> dict[str, pd.DataFrame]:
             alt = float(clinical.get("alt", 0.0))
             tbil = float(clinical.get("total_bilirubin", 0.0))
             dbil = float(clinical.get("direct_bilirubin", 0.0))
+            tprot = float(clinical.get("total_proteins", 0.0))
+            alb = float(clinical.get("serum_albumin", 0.0))
             row["ast_alt_ratio"] = ast / alt if alt > 0 else float("nan")
             row["direct_bilirubin_ratio"] = dbil / tbil if tbil > 0 else float("nan")
+            row["bilirubin_total"] = tbil + dbil
+            row["albumin_fraction"] = alb / tprot if tprot > 0 else float("nan")
+            row["alt_ast_product"] = alt * ast
         inputs[disease] = pd.DataFrame([row], columns=features)
     return inputs
 

@@ -130,23 +130,41 @@ presentations. This is documented in `training/prepare_datasets.py`.
 ## Model development
 
 **Clinical models (one per disease).** Five families are compared per disease
-with a **stratified 80:20 split** and **5-fold stratified cross-validation**:
-Logistic Regression, SVM (RBF), Random Forest, XGBoost, and MLP.
+with a **stratified 80:20 split** and **10-fold stratified cross-validation**
+(repeated over 3 shuffle seeds): Logistic Regression, SVM (RBF), Random Forest,
+XGBoost, and MLP.
 
 Preprocessing pipeline (fitted on training splits only, no leakage):
 1. **Missing-value imputation** (median; physiologically impossible zeros in Pima
    are treated as missing)
 2. **IQR outlier detection + clipping** (Tukey whiskers, `Q1 − 1.5·IQR` /
    `Q3 + 1.5·IQR`)
-3. **SMOTE** oversampling of the minority class (run inside every CV fold via an
-   imblearn pipeline, and on the training split for the deployed model)
-4. **Min–Max normalization** to [0, 1]
+3. **log1p transform** of heavily right-skewed liver markers (bilirubin, liver
+   enzymes), so the deployed liver model does not overreact to long tails
+4. **Feature scaling** — Min–Max by default, StandardScaler also searchable
+5. **SMOTE / SMOTEENN** oversampling of the minority class (run inside every CV
+   fold via an imblearn pipeline, and on the training split for the deployed
+   model)
 
-Metrics: accuracy, precision, recall, F1, specificity, ROC-AUC. The deployed
-model is selected by **cross-validated ROC-AUC** (more honest on these small
-datasets than a single held-out metric). Non-linear deployed models are
-**Platt-calibrated** on a held-out calibration subset so displayed probabilities
-are calibrated (see `app/preprocess.CalibratedClassifier`).
+Metrics: accuracy, **balanced accuracy**, precision, recall, F1, specificity,
+ROC-AUC, plus **per-class precision/recall/F1** and a **confusion matrix** on
+the held-out test set. The deployed model is selected by **cross-validated
+ROC-AUC** (more honest on these small datasets than a single held-out metric).
+Non-linear deployed models are **Platt-calibrated** on a held-out calibration
+subset so displayed probabilities are calibrated (see
+`app/preprocess.CalibratedClassifier`). The deployed decision threshold is
+optimized for **F1** by default, but for the imbalanced liver set (71% positive)
+it is optimized for **balanced accuracy** so the deployed model does not just
+predict the majority class.
+
+Headline metrics are reported as **mean ± spread over repeated 80:20 hold-out
+splits** (5 seeds) and **repeated 10-fold CV** (3 repeats), so a single lucky
+split cannot produce a flat 100% (which happens on the trivially-separable CKD
+set). Diabetes, heart and liver get per-family **hyperparameter tuning**
+(RandomizedSearchCV over model params, scaler choice, and SMOTE/SMOTEENN).
+Heart tuning alone moved the deployed model from 79.3% → 82.0% accuracy and
+89.0% → 90.7% AUC on the honest repeated hold-out; feature selection was tested
+(chi² / mutual information) and *hurt* this dataset, so it is not used.
 
 Full comparison tables are written to `backend/reports/clinical_comparison.csv`.
 

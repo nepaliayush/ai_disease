@@ -36,13 +36,22 @@ def norm_feature(name: str) -> str:
 # Diabetes (Pima)
 # ---------------------------------------------------------------------------
 def prepare_diabetes() -> pd.DataFrame:
-    cols = DIABETES_FEATURES + ["outcome"]
-    df = pd.read_csv(RAW_DATA_DIR / "diabetes.csv", header=None, names=cols)
+    base_cols = [
+        "pregnancies", "glucose", "blood_pressure", "skin_thickness", "insulin",
+        "bmi", "diabetes_pedigree_function", "age", "outcome",
+    ]
+    df = pd.read_csv(RAW_DATA_DIR / "diabetes.csv", header=None, names=base_cols)
     # Zeros are physiologically impossible for these measures -> treat as missing.
     for c in ["glucose", "blood_pressure", "skin_thickness", "insulin", "bmi"]:
         df.loc[df[c] == 0, c] = np.nan
+    # Clinically informative interactions: glucose load relative to body size,
+    # and cumulative risk exposure terms (age x BMI, age x pregnancies).
+    # Divisions by zero / NaN propagate and are handled by median imputation.
+    df["glucose_bmi"] = df["glucose"] / df["bmi"]
+    df["bmi_age"] = df["bmi"] * df["age"]
+    df["age_preg"] = df["age"] * df["pregnancies"]
     df["outcome"] = df["outcome"].astype(int)
-    return df[cols]
+    return df[DIABETES_FEATURES + ["outcome"]]
 
 
 # ---------------------------------------------------------------------------
@@ -102,6 +111,14 @@ def prepare_liver() -> pd.DataFrame:
     df["ast_alt_ratio"] = (
         df["aspartate_aminotransferase"] / df["alamine_aminotransferase"])
     df["direct_bilirubin_ratio"] = df["direct_bilirubin"] / df["total_bilirubin"]
+    # Additional clinically meaningful markers: total bilirubin load, albumin
+    # fraction of total protein (liver synthetic function), and hepatocellular
+    # injury load (AST x ALT product).
+    df["bilirubin_total"] = (
+        df["total_bilirubin"] + df["direct_bilirubin"])
+    df["albumin_fraction"] = df["albumin"] / df["total_proteins"]
+    df["alt_ast_product"] = (
+        df["alamine_aminotransferase"] * df["aspartate_aminotransferase"])
     return df[LIVER_FEATURES + ["outcome"]]
 
 

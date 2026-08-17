@@ -3,12 +3,13 @@
 Pipeline per disease:
   1. Median imputation of missing values
   2. IQR outlier detection + clipping (winsorization at Q1-1.5*IQR, Q3+1.5*IQR)
-  3. SMOTE oversampling of the minority class (training only)
-  4. Min-Max normalization to [0, 1]
+  3. Optional log1p transform of heavily right-skewed features (liver)
+  4. Feature scaling (Min-Max or Standard, configurable)
+  5. SMOTE oversampling of the minority class (training only)
 
-IQR clipping and scaling bounds are learned on the training split only, so no
-test/query information leaks. The same fitted transformer set is reused at
-serving time by the FastAPI application.
+IQR clipping, scaling and log-transform bounds are learned on the training split
+only, so no test/query information leaks. The same fitted transformer set is
+reused at serving time by the FastAPI application.
 """
 from __future__ import annotations
 
@@ -20,7 +21,7 @@ from imblearn.pipeline import Pipeline as ImbPipeline
 from imblearn.over_sampling import SMOTE
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 
 class IQRClipTransformer(BaseEstimator, TransformerMixin):
@@ -48,19 +49,78 @@ class IQRClipTransformer(BaseEstimator, TransformerMixin):
         return np.clip(X, self.lower_, self.upper_)
 
 
+class Log1pTransformer(BaseEstimator, TransformerMixin):
+    """Applies log1p to a fixed subset of columns (heavily right-skewed liver
+    markers like bilirubin and liver enzymes). Other columns pass through.
+    The column indices are fixed at construction, so no data-dependent state
+    is learned (safe inside CV folds and at serving time)."""
+
+    def __init__(self, columns: list[str]) -> None:
+        self.columns = columns
+        self.idx_ = None
+
+    def fit(self, X, y=None):
+        names = list(getattr(X, "columns", range(X.shape[1])))
+        self.idx_ = [i for i, c in enumerate(names) if c in self.columns]
+        return self
+
+    def transform(self, X):
+        X = np.asarray(X, dtype=float)
+        if self.idx_:
+            X = X.copy()
+            X[:, self.idx_] = np.log1p(X[:, self.idx_])
+        return X
+
+
+class ScalerChoice(BaseEstimator, TransformerMixin):
+    """Wraps MinMaxScaler or StandardScaler; `kind` is searchable in a grid."""
+
+    def __init__(self, kind: str = "minmax") -> None:
+        self.kind = kind
+
+    def fit(self, X, y=None):
+        Scaler = StandardScaler if self.kind == "standard" else MinMaxScaler
+        self.scaler_ = Scaler().fit(X)
+        return self
+
+    def transform(self, X):
+        return self.scaler_.transform(X)
+
+
+class SamplerChoice(BaseEstimator):
+    """Wraps SMOTE or SMOTEENN; `kind` is searchable in a grid."""
+
+    def __init__(self, kind: str = "smote") -> None:
+        self.kind = kind
+
+    def fit_resample(self, X, y):
+        if self.kind == "smoteenn":
+            from imblearn.combine import SMOTEENN
+            self.sampler_ = SMOTEENN(random_state=42)
+        else:
+            self.sampler_ = SMOTE(random_state=42)
+        return self.sampler_.fit_resample(X, y)
+
+    def fit(self, X, y=None):
+        return self
+
+
 @dataclass
 class ClinicalPreprocessor:
     """Container for a fitted set of preprocessors, reusable at serving time."""
 
     imputer: SimpleImputer
     clip: IQRClipTransformer
-    scaler: MinMaxScaler
+    log: Log1pTransformer | None
+    scaler: ScalerChoice
     features: list[str]
 
     def transform(self, X: pd.DataFrame) -> np.ndarray:
         X = X[self.features]
         X = self.imputer.transform(X)
         X = self.clip.transform(X)
+        if self.log is not None:
+            X = self.log.transform(X)
         return self.scaler.transform(X)
 
 
@@ -90,28 +150,44 @@ class CalibratedClassifier:
         return (self.predict_proba(X)[:, 1] >= self.threshold).astype(int)
 
 
-def fit_preprocessor(X: pd.DataFrame) -> ClinicalPreprocessor:
-    """Fit imputer, IQR clipper and scaler on training data only."""
+def fit_preprocessor(X: pd.DataFrame, scaler: str = "minmax",
+                     log_cols: list[str] | None = None) -> ClinicalPreprocessor:
+    """Fit imputer, IQR clipper and scaler on training data only.
+
+    `scaler` is "minmax" or "standard". `log_cols` optionally log1p-transforms
+    a fixed subset of columns (e.g. heavily skewed liver markers)."""
     imputer = SimpleImputer(strategy="median").fit(X)
     X_imp = imputer.transform(X)
     clip = IQRClipTransformer().fit(X_imp)
     X_clip = clip.transform(X_imp)
-    scaler = MinMaxScaler().fit(X_clip)
+    log = None
+    if log_cols:
+        log = Log1pTransformer(log_cols).fit(X_clip)
+        X_scaled_in = log.transform(X_clip)
+    else:
+        X_scaled_in = X_clip
+    scaler_obj = ScalerChoice(scaler).fit(X_scaled_in)
     return ClinicalPreprocessor(
-        imputer=imputer, clip=clip, scaler=scaler,
+        imputer=imputer, clip=clip, log=log, scaler=scaler_obj,
         features=list(X.columns),
     )
 
 
-def build_clinical_pipeline(clf) -> ImbPipeline:
-    """Full evaluation pipeline (for cross-validation): impute -> clip -> scale
-    -> SMOTE -> classifier. SMOTE runs inside every CV fold to avoid leakage."""
-    return ImbPipeline(
-        steps=[
-            ("imputer", SimpleImputer(strategy="median")),
-            ("clip", IQRClipTransformer()),
-            ("scaler", MinMaxScaler()),
-            ("smote", SMOTE(random_state=42)),
-            ("clf", clf),
-        ]
-    )
+def build_clinical_pipeline(clf, scaler: str = "minmax",
+                            log_cols: list[str] | None = None,
+                            resampler: str = "smote") -> ImbPipeline:
+    """Full evaluation pipeline (for cross-validation): impute -> clip -> log1p?
+    -> scale -> sample (SMOTE/SMOTEENN) -> classifier. Oversampling runs inside
+    every CV fold to avoid leakage."""
+    steps = [
+        ("imputer", SimpleImputer(strategy="median")),
+        ("clip", IQRClipTransformer()),
+    ]
+    if log_cols:
+        steps.append(("log", Log1pTransformer(log_cols)))
+    steps += [
+        ("scaler", ScalerChoice(scaler)),
+        ("resampler", SamplerChoice(resampler)),
+        ("clf", clf),
+    ]
+    return ImbPipeline(steps=steps)
