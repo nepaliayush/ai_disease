@@ -81,5 +81,10 @@ def all_model_metrics() -> dict:
     return {d: get_clinical_artifact(d)["metrics"] for d in DISEASES}
 
 
+def all_model_comparisons() -> dict:
+    """Per-disease comparison of all five model families (CV + held-out)."""
+    return {d: get_clinical_artifact(d)["comparison"] for d in DISEASES}
+
+
 def deployed_model_names() -> dict[str, str]:
     return {d: get_clinical_artifact(d)["model_name"] for d in DISEASES}

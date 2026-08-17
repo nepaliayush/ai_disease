@@ -97,8 +97,13 @@ LIVER_LOG_COLS = [
 DISEASE_PREPROCESSING = {
     "diabetes": {"scaler": "minmax", "log_cols": None, "threshold_objective": "f1"},
     "heart_disease": {"scaler": "minmax", "log_cols": None, "threshold_objective": "f1"},
+    # Liver is imbalanced (71% positive). A balanced-accuracy threshold was
+    # tested and maximized per-class balance but dropped overall accuracy to
+    # ~65% and recall to ~58% (missing most diseased patients). The F1
+    # objective keeps the best accuracy (~72%) while SMOTE + class_weight
+    # balanced already counter the majority-class bias.
     "liver_disease": {"scaler": "minmax", "log_cols": LIVER_LOG_COLS,
-                      "threshold_objective": "balanced_accuracy"},
+                      "threshold_objective": "f1"},
     "ckd": {"scaler": "minmax", "log_cols": None, "threshold_objective": "f1"},
 }
 

@@ -23,7 +23,9 @@ from app.fields import (
     ENCODERS, FIELD_TO_MODEL_FEATURE, SYMPTOM_CHECKLIST, SYMPTOM_DISCLAIMER,
     UNIFIED_FIELDS,
 )
-from app.model_store import all_model_metrics, deployed_model_names
+from app.model_store import (
+    all_model_comparisons, all_model_metrics, deployed_model_names,
+)
 from app.pipeline import run_pipeline
 from app.schemas import PredictRequest, PredictResponse
 
@@ -82,6 +84,7 @@ def metadata() -> dict:
         "fusion_weights": FUSION_W,
         "deployed_models": deployed_model_names(),
         "model_metrics": all_model_metrics(),
+        "model_comparison": all_model_comparisons(),
         "disclaimer": SYMPTOM_DISCLAIMER,
     }
 

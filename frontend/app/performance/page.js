@@ -11,6 +11,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 import ModelMetrics from "@/components/ModelMetrics";
+import ModelComparison from "@/components/ModelComparison";
 import { useMetadata } from "@/hooks/useMetadata";
 import { prettyLabel } from "@/lib/utils";
 
@@ -54,6 +55,12 @@ export default function Performance() {
         diseases={meta.diseases}
         models={meta.deployed_models}
         metrics={meta.model_metrics}
+      />
+
+      <ModelComparison
+        diseases={meta.diseases}
+        deployedModels={meta.deployed_models}
+        comparison={meta.model_comparison}
       />
 
       <Card className="shadow-none">

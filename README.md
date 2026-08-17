@@ -153,9 +153,12 @@ ROC-AUC** (more honest on these small datasets than a single held-out metric).
 Non-linear deployed models are **Platt-calibrated** on a held-out calibration
 subset so displayed probabilities are calibrated (see
 `app/preprocess.CalibratedClassifier`). The deployed decision threshold is
-optimized for **F1** by default, but for the imbalanced liver set (71% positive)
-it is optimized for **balanced accuracy** so the deployed model does not just
-predict the majority class.
+optimized for **F1** by default. A balanced-accuracy threshold was evaluated
+for the imbalanced liver set (71% positive): it maximized per-class balance but
+dropped overall accuracy to ~65% and recall to ~58% (missing most diseased
+patients), so the F1 objective is kept; majority-class bias is instead handled
+by `class_weight='balanced'`, SMOTE oversampling and the log1p transform of
+skewed markers.
 
 Headline metrics are reported as **mean ± spread over repeated 80:20 hold-out
 splits** (5 seeds) and **repeated 10-fold CV** (3 repeats), so a single lucky
