@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
@@ -46,7 +47,11 @@ RISK_BANDS = [
 # Clinical models to compare (name -> (estimator factory, is_tree_based)).
 CLINICAL_MODELS = {
     "LogisticRegression": (lambda: LogisticRegression(max_iter=3000), False),
-    "SVM": (lambda: SVC(probability=True, kernel="rbf", C=10, gamma="scale"), False),
+    "SVM": (
+        lambda: CalibratedClassifierCV(
+            SVC(kernel="rbf", C=10, gamma="scale"), ensemble=False),
+        False,
+    ),
     "RandomForest": (
         lambda: RandomForestClassifier(n_estimators=300, random_state=42, n_jobs=-1),
         True,

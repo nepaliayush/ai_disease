@@ -98,10 +98,10 @@ PARAM_GRIDS = {
     "SVM": {
         "scaler__kind": ["minmax", "standard"],
         "resampler__kind": ["smote", "smoteenn"],
-        "clf__kernel": ["rbf", "linear"],
-        "clf__C": [0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 100.0],
-        "clf__gamma": ["scale", 0.01, 0.03, 0.05, 0.1, 0.3, 0.5],
-        "clf__class_weight": [None, "balanced"],
+        "clf__estimator__kernel": ["rbf", "linear"],
+        "clf__estimator__C": [0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 100.0],
+        "clf__estimator__gamma": ["scale", 0.01, 0.03, 0.05, 0.1, 0.3, 0.5],
+        "clf__estimator__class_weight": [None, "balanced"],
     },
     "RandomForest": {
         "scaler__kind": ["minmax", "standard"],
@@ -145,10 +145,10 @@ PARAM_GRIDS_OVERRIDES = {
         "SVM": {
             "scaler__kind": ["minmax"],
             "resampler__kind": ["smote"],
-            "clf__kernel": ["rbf"],
-            "clf__C": [0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 100.0],
-            "clf__gamma": ["scale", 0.01, 0.03, 0.05, 0.1, 0.3, 0.5],
-            "clf__class_weight": [None, "balanced"],
+            "clf__estimator__kernel": ["rbf"],
+            "clf__estimator__C": [0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 50.0, 100.0],
+            "clf__estimator__gamma": ["scale", 0.01, 0.03, 0.05, 0.1, 0.3, 0.5],
+            "clf__estimator__class_weight": [None, "balanced"],
         },
     },
 }
