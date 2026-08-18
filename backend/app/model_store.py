@@ -7,7 +7,9 @@ import joblib
 import pandas as pd
 
 from app.config import DISEASES, MODELS_DIR
-from app.fields import DATASET_FEATURES, FIELD_TO_MODEL_FEATURE, encode_field
+from app.fields import (
+    bmi_category, DATASET_FEATURES, FIELD_TO_MODEL_FEATURE, encode_field,
+)
 
 
 @lru_cache(maxsize=1)
@@ -48,9 +50,13 @@ def build_clinical_inputs(payload: dict) -> dict[str, pd.DataFrame]:
             bmi = float(clinical.get("bmi", 0.0))
             age = float(clinical.get("age", 0.0))
             pregnancies = float(clinical.get("pregnancies", 0.0))
+            insulin = float(clinical.get("insulin", 0.0))
             row["glucose_bmi"] = glucose / bmi if bmi > 0 else float("nan")
             row["bmi_age"] = bmi * age
             row["age_preg"] = age * pregnancies
+            row["glucose_insulin_ratio"] = (
+                glucose / insulin if insulin > 0 else float("nan"))
+            row["bmi_category"] = bmi_category(bmi)
         if disease == "liver_disease":
             # Engineered ratios matching the training-time features. Divisions
             # by zero become NaN, which the preprocessor median-imputes.

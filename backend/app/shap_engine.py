@@ -1,7 +1,7 @@
 """SHAP explainability for the deployed clinical models.
 
 Strategy per model family (kept fast for online serving):
-  - tree models (Random Forest / XGBoost)      -> TreeExplainer (interventional)
+  - tree models (Random Forest / XGBoost / CatBoost) -> TreeExplainer (interventional)
   - linear models (LogisticRegression, linear  -> LinearExplainer (exact)
     SVC / SVM)
   - anything else (MLP, RBF SVM)               -> KernelExplainer fallback on a

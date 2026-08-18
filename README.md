@@ -129,14 +129,16 @@ presentations. This is documented in `training/prepare_datasets.py`.
 
 ## Model development
 
-**Clinical models (one per disease).** Five families are compared per disease
-with a **stratified 80:20 split** and **10-fold stratified cross-validation**
-(repeated over 3 shuffle seeds): Logistic Regression, SVM (RBF), Random Forest,
-XGBoost, and MLP.
+**Clinical models (one per disease).** Six families are compared for heart
+disease and five for the other diseases, with a **stratified 80:20 split** and
+**10-fold stratified cross-validation** (repeated over 3 shuffle seeds):
+Logistic Regression, SVM (RBF), Random Forest, XGBoost, MLP, and CatBoost (heart
+only — it did not beat the existing families on diabetes, liver or CKD).
 
 Preprocessing pipeline (fitted on training splits only, no leakage):
-1. **Missing-value imputation** (median; physiologically impossible zeros in Pima
-   are treated as missing)
+1. **Missing-value imputation** (median by default; physiologically impossible zeros
+   in Pima are treated as missing and imputed with a **KNN imputer** for the
+   diabetes model, which exploits feature correlation with the engineered ratios)
 2. **IQR outlier detection + clipping** (Tukey whiskers, `Q1 − 1.5·IQR` /
    `Q3 + 1.5·IQR`)
 3. **log1p transform** of heavily right-skewed liver markers (bilirubin, liver
@@ -144,16 +146,19 @@ Preprocessing pipeline (fitted on training splits only, no leakage):
 4. **Feature scaling** — Min–Max by default, StandardScaler also searchable
 5. **SMOTE / SMOTEENN** oversampling of the minority class (run inside every CV
    fold via an imblearn pipeline, and on the training split for the deployed
-   model)
+   model — never before the train/test split, so no leakage)
 
 Metrics: accuracy, **balanced accuracy**, precision, recall, F1, specificity,
-ROC-AUC, plus **per-class precision/recall/F1** and a **confusion matrix** on
-the held-out test set. The deployed model is selected by **cross-validated
-ROC-AUC** (more honest on these small datasets than a single held-out metric).
-Non-linear deployed models are **Platt-calibrated** on a held-out calibration
-subset so displayed probabilities are calibrated (see
-`app/preprocess.CalibratedClassifier`). The deployed decision threshold is
-optimized for **F1** by default. A balanced-accuracy threshold was evaluated
+ROC-AUC, **PR-AUC (average precision)**, plus **per-class precision/recall/F1**
+and a **confusion matrix** on the held-out test set. The deployed model is
+selected by cross-validated ROC-AUC by default; the imbalanced liver set
+(71% positive) is selected by **cross-validated PR-AUC** instead, since the
+majority class inflates F1/accuracy. Non-linear deployed models are
+**Platt-calibrated** on a held-out calibration subset so displayed probabilities
+are calibrated (see `app/preprocess.CalibratedClassifier`); the heart model
+opts in to calibration even for its linear LogisticRegression so probabilities
+are consistent across families. The deployed decision threshold is optimized
+for **F1** by default. A balanced-accuracy threshold was evaluated
 for the imbalanced liver set (71% positive): it maximized per-class balance but
 dropped overall accuracy to ~65% and recall to ~58% (missing most diseased
 patients), so the F1 objective is kept; majority-class bias is instead handled
@@ -161,13 +166,24 @@ by `class_weight='balanced'`, SMOTE oversampling and the log1p transform of
 skewed markers.
 
 Headline metrics are reported as **mean ± spread over repeated 80:20 hold-out
-splits** (5 seeds) and **repeated 10-fold CV** (3 repeats), so a single lucky
-split cannot produce a flat 100% (which happens on the trivially-separable CKD
-set). Diabetes, heart and liver get per-family **hyperparameter tuning**
-(RandomizedSearchCV over model params, scaler choice, and SMOTE/SMOTEENN).
-Heart tuning alone moved the deployed model from 79.3% → 82.0% accuracy and
-89.0% → 90.7% AUC on the honest repeated hold-out; feature selection was tested
-(chi² / mutual information) and *hurt* this dataset, so it is not used.
+splits** (5 seeds), **repeated 10-fold CV** (3 repeats) for untuned families,
+and **5-fold nested cross-validation** (tuning runs inside each outer fold) for
+tuned families, so the reported CV numbers are not optimistically biased by
+hyperparameter selection on the evaluation data. A single lucky split cannot
+produce a flat 100% (which happens on the trivially-separable CKD set). Each
+deployed model also reports a **bootstrap 95% CI on the held-out ROC-AUC**
+(1000 resamples) printed in the training console. Diabetes, heart and liver get
+per-family **hyperparameter tuning** (RandomizedSearchCV over model params,
+scaler choice, and SMOTE/SMOTEENN). Heart tuning alone moved the deployed model
+from 79.3% → 82.0% accuracy and 89.0% → 90.7% AUC on the honest repeated
+hold-out; feature selection was tested (chi² / mutual information) and *hurt*
+this dataset, so it is not used.
+
+`training/sweep_thresholds.py` sweeps the decision threshold of any deployed
+model and reports precision / recall (sensitivity) / specificity / F1 at each,
+so a screening-oriented operating point (e.g. high recall) can be chosen.
+`training/validate_ckd.py` stress-tests the deployed CKD model with Gaussian
+noise on the test inputs and prints a SHAP feature-importance sanity check.
 
 Full comparison tables are written to `backend/reports/clinical_comparison.csv`.
 
@@ -262,7 +278,7 @@ backend/
   app/                 FastAPI app (main, schemas, fields, preprocess,
                        model_store, pipeline, fusion, shap_engine, symptoms)
   training/            prepare_datasets, train_clinical, train_symptom,
-                       evaluate_bias
+                       evaluate_bias, sweep_thresholds, validate_ckd
   scripts/             download_data
   tests/               API tests
   data/                raw/ + processed/ (generated)

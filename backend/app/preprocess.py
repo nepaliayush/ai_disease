@@ -20,8 +20,32 @@ import pandas as pd
 from imblearn.pipeline import Pipeline as ImbPipeline
 from imblearn.over_sampling import SMOTE
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+
+
+class ImputerChoice(BaseEstimator, TransformerMixin):
+    """Wraps SimpleImputer(median) or KNNImputer; `kind` is searchable.
+
+    KNN imputation is used for diabetes, where the physiologically-impossible
+    zeros are real missingness and the engineered ratio features correlate with
+    their raw inputs, so nearest-neighbour imputation is more informative than a
+    column median."""
+
+    def __init__(self, kind: str = "median") -> None:
+        self.kind = kind
+
+    def fit(self, X, y=None):
+        if self.kind == "knn":
+            from sklearn.impute import KNNImputer
+            self.imputer_ = KNNImputer(n_neighbors=5)
+        else:
+            from sklearn.impute import SimpleImputer
+            self.imputer_ = SimpleImputer(strategy="median")
+        self.imputer_.fit(X)
+        return self
+
+    def transform(self, X):
+        return self.imputer_.transform(X)
 
 
 class IQRClipTransformer(BaseEstimator, TransformerMixin):
@@ -109,7 +133,7 @@ class SamplerChoice(BaseEstimator):
 class ClinicalPreprocessor:
     """Container for a fitted set of preprocessors, reusable at serving time."""
 
-    imputer: SimpleImputer
+    imputer: ImputerChoice
     clip: IQRClipTransformer
     log: Log1pTransformer | None
     scaler: ScalerChoice
@@ -151,13 +175,15 @@ class CalibratedClassifier:
 
 
 def fit_preprocessor(X: pd.DataFrame, scaler: str = "minmax",
-                     log_cols: list[str] | None = None) -> ClinicalPreprocessor:
+                     log_cols: list[str] | None = None,
+                     imputer: str = "median") -> ClinicalPreprocessor:
     """Fit imputer, IQR clipper and scaler on training data only.
 
-    `scaler` is "minmax" or "standard". `log_cols` optionally log1p-transforms
-    a fixed subset of columns (e.g. heavily skewed liver markers)."""
-    imputer = SimpleImputer(strategy="median").fit(X)
-    X_imp = imputer.transform(X)
+    `scaler` is "minmax" or "standard". `imputer` is "median" (default) or
+    "knn". `log_cols` optionally log1p-transforms a fixed subset of columns
+    (e.g. heavily skewed liver markers)."""
+    imputer_obj = ImputerChoice(imputer).fit(X)
+    X_imp = imputer_obj.transform(X)
     clip = IQRClipTransformer().fit(X_imp)
     X_clip = clip.transform(X_imp)
     log = None
@@ -168,19 +194,20 @@ def fit_preprocessor(X: pd.DataFrame, scaler: str = "minmax",
         X_scaled_in = X_clip
     scaler_obj = ScalerChoice(scaler).fit(X_scaled_in)
     return ClinicalPreprocessor(
-        imputer=imputer, clip=clip, log=log, scaler=scaler_obj,
+        imputer=imputer_obj, clip=clip, log=log, scaler=scaler_obj,
         features=list(X.columns),
     )
 
 
 def build_clinical_pipeline(clf, scaler: str = "minmax",
                             log_cols: list[str] | None = None,
-                            resampler: str = "smote") -> ImbPipeline:
+                            resampler: str = "smote",
+                            imputer: str = "median") -> ImbPipeline:
     """Full evaluation pipeline (for cross-validation): impute -> clip -> log1p?
     -> scale -> sample (SMOTE/SMOTEENN) -> classifier. Oversampling runs inside
     every CV fold to avoid leakage."""
     steps = [
-        ("imputer", SimpleImputer(strategy="median")),
+        ("imputer", ImputerChoice(imputer)),
         ("clip", IQRClipTransformer()),
     ]
     if log_cols:

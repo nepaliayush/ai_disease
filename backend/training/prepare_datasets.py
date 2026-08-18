@@ -21,7 +21,10 @@ import numpy as np
 import pandas as pd
 
 from app.config import PROCESSED_DATA_DIR, RAW_DATA_DIR
-from app.fields import canonical_label, DIABETES_FEATURES, HEART_FEATURES, LIVER_FEATURES, CKD_FEATURES
+from app.fields import (
+    bmi_category, canonical_label, DIABETES_FEATURES, HEART_FEATURES,
+    LIVER_FEATURES, CKD_FEATURES,
+)
 
 PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -41,15 +44,23 @@ def prepare_diabetes() -> pd.DataFrame:
         "bmi", "diabetes_pedigree_function", "age", "outcome",
     ]
     df = pd.read_csv(RAW_DATA_DIR / "diabetes.csv", header=None, names=base_cols)
-    # Zeros are physiologically impossible for these measures -> treat as missing.
+    # Zeros are physiologically impossible for these measures -> treat as missing
+    # (the training preprocessor then imputes them with a KNN imputer for this
+    # dataset rather than leaving literal zeros in the feature matrix).
     for c in ["glucose", "blood_pressure", "skin_thickness", "insulin", "bmi"]:
         df.loc[df[c] == 0, c] = np.nan
     # Clinically informative interactions: glucose load relative to body size,
     # and cumulative risk exposure terms (age x BMI, age x pregnancies).
-    # Divisions by zero / NaN propagate and are handled by median imputation.
+    # Divisions by zero / NaN propagate and are handled by imputation.
     df["glucose_bmi"] = df["glucose"] / df["bmi"]
     df["bmi_age"] = df["bmi"] * df["age"]
     df["age_preg"] = df["age"] * df["pregnancies"]
+    # Insulin resistance proxy: high glucose / low insulin is the hallmark of
+    # insulin resistance. Guard against a division-by-zero / NaN denominator.
+    df["glucose_insulin_ratio"] = np.where(
+        df["insulin"] > 0, df["glucose"] / df["insulin"], np.nan)
+    # BMI risk bucket (underweight / normal / overweight / obese) as an ordinal.
+    df["bmi_category"] = df["bmi"].apply(bmi_category)
     df["outcome"] = df["outcome"].astype(int)
     return df[DIABETES_FEATURES + ["outcome"]]
 
@@ -224,17 +235,20 @@ def prepare_symptoms() -> pd.DataFrame:
     # Normalize feature names; keep the first of any duplicate columns.
     df.columns = [norm_feature(c) for c in df.columns]
     df = df.loc[:, ~df.columns.duplicated(keep="first")].copy()
-    # Prognosis column -> binary symptom columns.
+    # Prognosis column -> binary symptom columns. Join the symptom block and the
+    # mapped disease column at once (pd.concat(axis=1)) instead of inserting
+    # into the frame, which fragments it and triggers a pandas PerformanceWarning.
     symptoms = [c for c in df.columns if c != "prognosis"]
-    df[symptoms] = df[symptoms].fillna(0).astype(int)
-    df["disease"] = df["prognosis"].map(canonical_label)
+    symptom_df = df[symptoms].fillna(0).astype(int)
+    disease = df["prognosis"].map(canonical_label).rename("disease")
+    df = pd.concat([symptom_df, disease], axis=1)
 
     # ---- Knowledge-based augmentation for target-disease classes -----------
     rng = np.random.default_rng(42)
     augmented = []
-    for disease, signature in CANONICAL_SIGNATURES.items():
+    for disease_name, signature in CANONICAL_SIGNATURES.items():
         augmented += generate_signature_rows(
-            symptoms, disease, signature, AUGMENT_ROWS_PER_CLASS, rng)
+            symptoms, disease_name, signature, AUGMENT_ROWS_PER_CLASS, rng)
     aug_df = pd.DataFrame(augmented, columns=symptoms + ["disease"])
     return pd.concat([df[symptoms + ["disease"]], aug_df], ignore_index=True)
 

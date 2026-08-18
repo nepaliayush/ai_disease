@@ -100,9 +100,11 @@ export default function Performance() {
             Cross-validation
           </CardTitle>
           <CardDescription>
-            Mean ± standard deviation over repeated 10-fold stratified
-            cross-validation (multiple shuffle seeds; not a single lucky
-            split).
+            Mean ± standard deviation over cross-validation. Tuned model
+            families are evaluated with 5-fold nested cross-validation
+            (hyperparameter tuning runs inside each outer fold, so the numbers
+            are not optimistically biased); untuned families use repeated
+            10-fold stratified CV over multiple shuffle seeds.
           </CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
@@ -139,9 +141,11 @@ export default function Performance() {
             </tbody>
           </table>
           <p className="mt-3 text-xs text-muted-foreground">
-            Metrics are the mean ± standard deviation across 10-fold stratified
-            CV repeated {(meta.model_metrics && Object.values(meta.model_metrics)[0]?.cv_repeats) ?? "multiple"}{" "}
-            times. Even a single repeated-CV run keeps reporting ~100% for CKD:
+            Metrics are the mean ± standard deviation across{" "}
+            {(meta.model_metrics && Object.values(meta.model_metrics)[0]?.nested)
+              ? "5-fold nested cross-validation (tuning inside each fold)"
+              : `10-fold stratified CV repeated ${(meta.model_metrics && Object.values(meta.model_metrics)[0]?.cv_repeats) ?? "multiple"} times`}
+            . Even a single repeated-CV run keeps reporting ~100% for CKD:
             that dataset is genuinely near-perfectly separable, so the number
             reflects the curated data, not an infallible model.
           </p>

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from catboost import CatBoostClassifier
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -45,6 +46,10 @@ RISK_BANDS = [
 ]
 
 # Clinical models to compare (name -> (estimator factory, is_tree_based)).
+# The full family list is shared, but only a per-disease subset is actually
+# compared/trained (see clinical_families()): CatBoost is enabled for heart
+# disease only, since it did not beat the existing families on diabetes, liver
+# or CKD.
 CLINICAL_MODELS = {
     "LogisticRegression": (lambda: LogisticRegression(max_iter=3000), False),
     "SVM": (
@@ -64,11 +69,31 @@ CLINICAL_MODELS = {
         ),
         True,
     ),
+    "CatBoost": (
+        lambda: CatBoostClassifier(
+            iterations=300, learning_rate=0.05, depth=4,
+            bootstrap_type="Bernoulli", verbose=0, allow_writing_files=False,
+            random_seed=42,
+        ),
+        True,
+    ),
     "MLP": (
         lambda: MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=1500, random_state=42),
         False,
     ),
 }
+
+# Per-disease model families. Every disease compares the common five; only
+# heart disease additionally gets CatBoost.
+BASE_CLINICAL_FAMILIES = ["LogisticRegression", "SVM", "RandomForest", "XGBoost", "MLP"]
+EXTRA_CLINICAL_FAMILIES = {
+    "heart_disease": ["CatBoost"],
+}
+
+
+def clinical_families(disease: str) -> list[str]:
+    """Model family names compared/trained for a given disease."""
+    return BASE_CLINICAL_FAMILIES + EXTRA_CLINICAL_FAMILIES.get(disease, [])
 
 # Number of background samples used to fit SHAP explainers at serving time.
 SHAP_BACKGROUND_SAMPLES = 100
@@ -100,15 +125,30 @@ LIVER_LOG_COLS = [
 ]
 
 DISEASE_PREPROCESSING = {
-    "diabetes": {"scaler": "minmax", "log_cols": None, "threshold_objective": "f1"},
-    "heart_disease": {"scaler": "minmax", "log_cols": None, "threshold_objective": "f1"},
+    # Diabetes: glucose/blood pressure/skin thickness/insulin zeros are replaced
+    # with NaN in prep and imputed with a KNN imputer (uses feature correlation,
+    # e.g. glucose <-> glucose/insulin ratio) instead of a plain median.
+    "diabetes": {"scaler": "minmax", "log_cols": None, "threshold_objective": "f1",
+                 "imputer": "knn"},
+    "heart_disease": {"scaler": "minmax", "log_cols": None,
+                      "threshold_objective": "f1",
+                      # Linear models skip external calibration by default; heart
+                      # opts in so its deployed LogisticRegression gets the same
+                      # Platt-scaled probabilities as the other deployed families.
+                      "calibrate": True},
     # Liver is imbalanced (71% positive). A balanced-accuracy threshold was
     # tested and maximized per-class balance but dropped overall accuracy to
     # ~65% and recall to ~58% (missing most diseased patients). The F1
     # objective keeps the best accuracy (~72%) while SMOTE + class_weight
-    # balanced already counter the majority-class bias.
+    # balanced already counter the majority-class bias. Because the imbalance
+    # inflates F1/accuracy, the deployed model is selected by cross-validated
+    # PR-AUC (average precision) instead of ROC-AUC so the ranking reflects
+    # precision@recall rather than the easy majority class.
     "liver_disease": {"scaler": "minmax", "log_cols": LIVER_LOG_COLS,
-                      "threshold_objective": "f1"},
+                      "threshold_objective": "f1",
+                      "imputer": "median",
+                      "selection_metric": "cv_pr_auc_mean",
+                      "selection_tiebreak": "pr_auc"},
     "ckd": {"scaler": "minmax", "log_cols": None, "threshold_objective": "f1"},
 }
 

@@ -7,6 +7,28 @@ symptom model's disease classes onto the four target disease categories.
 """
 from __future__ import annotations
 
+import numpy as np
+import pandas as pd
+
+# ---------------------------------------------------------------------------
+# Shared feature-engineering helpers (used at prep time and serving time so the
+# deployed models always see the same features).
+# ---------------------------------------------------------------------------
+BMI_CATEGORY_BINS = [-np.inf, 18.5, 25.0, 30.0, np.inf]
+BMI_CATEGORY_LABELS = [0, 1, 2, 3]  # underweight / normal / overweight / obese
+
+
+def bmi_category(value) -> float:
+    """Map a BMI value to an ordinal category (0..3). NaN propagates."""
+    v = float(value) if value is not None and not pd.isna(value) else float("nan")
+    if pd.isna(v):
+        return float("nan")
+    for label, lo, hi in zip(BMI_CATEGORY_LABELS, BMI_CATEGORY_BINS[:-1], BMI_CATEGORY_BINS[1:]):
+        if lo <= v < hi:
+            return float(label)
+    return float(BMI_CATEGORY_LABELS[-1])
+
+
 # ---------------------------------------------------------------------------
 # Per-dataset clinical feature columns (as cleaned in `training/prepare_datasets.py`)
 # ---------------------------------------------------------------------------
@@ -15,6 +37,9 @@ DIABETES_FEATURES = [
     "bmi", "diabetes_pedigree_function", "age",
     # Engineered interactions (see training/prepare_datasets.py).
     "glucose_bmi", "bmi_age", "age_preg",
+    # Insulin resistance proxy (glucose/insulin ratio), BMI risk bucket, and
+    # age x pregnancies are the requested additions.
+    "glucose_insulin_ratio", "bmi_category",
 ]
 
 HEART_FEATURES = [

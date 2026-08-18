@@ -11,8 +11,10 @@ const COLS = [
   { key: "accuracy", label: "Accuracy" },
   { key: "f1", label: "F1" },
   { key: "roc_auc", label: "AUC" },
+  { key: "pr_auc", label: "PR-AUC" },
   { key: "cv_accuracy_mean", label: "CV Acc" },
   { key: "cv_roc_auc_mean", label: "CV AUC" },
+  { key: "cv_pr_auc_mean", label: "CV PR-AUC" },
 ];
 
 export default function ModelComparison({
@@ -31,9 +33,11 @@ export default function ModelComparison({
         </CardTitle>
         <CardDescription>
           All five model families compared per disease. The deployed model
-          (marked with ✓) is selected by cross-validated ROC-AUC; accuracy / F1 /
-          AUC are held-out test metrics on the stratified 80:20 split, CV Acc /
-          CV AUC are the mean over repeated 10-fold stratified cross-validation.
+          (marked with ✓) is selected by cross-validated ROC-AUC (PR-AUC for the
+          imbalanced liver set). Accuracy / F1 / AUC / PR-AUC are repeated
+          hold-out split means (± spread, identical protocol to the Model
+          performance table); CV columns are nested CV (tuned families) or
+          repeated 10-fold CV (untuned).
         </CardDescription>
       </CardHeader>
       <CardContent className="overflow-x-auto">
@@ -57,6 +61,12 @@ export default function ModelComparison({
                   const isDeployed = deployedModels?.[disease] === name;
                   const cv = (k) =>
                     m[k] != null ? `${(m[k] * 100).toFixed(1)}%` : "—";
+                  const held = (k) => {
+                    const std = m.holdout_std?.[k] * 100;
+                    return std != null
+                      ? `${(m[k] * 100).toFixed(1)} ± ${std.toFixed(1)}%`
+                      : `${(m[k] * 100).toFixed(1)}%`;
+                  };
                   return (
                     <tr
                       key={`${disease}-${name}`}
@@ -81,9 +91,7 @@ export default function ModelComparison({
                           key={c.key}
                           className="py-2 pr-4 text-right tabular-nums"
                         >
-                          {c.key.startsWith("cv_")
-                            ? cv(c.key)
-                            : `${(m[c.key] * 100).toFixed(1)}%`}
+                          {c.key.startsWith("cv_") ? cv(c.key) : held(c.key)}
                         </td>
                       ))}
                       <td className="py-2 text-right tabular-nums">

@@ -10,9 +10,12 @@
 #
 # Usage:
 #   ./train.sh                # prepare + train clinical + train symptom
+#   ./train.sh heart_disease  # retrain only one clinical model (heart)
 #   ./train.sh --with-download
 #   ./train.sh --with-bias
 #   ./train.sh --with-download --with-bias
+#
+# Valid disease names: diabetes | heart_disease | liver_disease | ckd
 #
 # After training, restart the API so it loads the new artifacts:
 #   ./run.sh
@@ -25,15 +28,17 @@ PY="$BACKEND_DIR/.venv/bin/python"
 
 WITH_DOWNLOAD=0
 WITH_BIAS=0
+DISEASE=""
 
 for arg in "$@"; do
   case "$arg" in
     --with-download) WITH_DOWNLOAD=1 ;;
     --with-bias) WITH_BIAS=1 ;;
     --help|-h)
-      sed -n '2,18p' "${BASH_SOURCE[0]}"
+      sed -n '2,20p' "${BASH_SOURCE[0]}"
       exit 0
       ;;
+    diabetes|heart_disease|liver_disease|ckd) DISEASE="$arg" ;;
     *) echo "[train] unknown option: $arg (see --help)" >&2; exit 1 ;;
   esac
 done
@@ -60,16 +65,27 @@ else
 fi
 
 # ---- 3. Clean raw data into processed CSVs ----------------------------------
-echo "[train] preparing datasets (clean + engineered features) ..."
-"$PY" -m training.prepare_datasets
+# (only needed for a full run; a single-disease retrain uses existing data)
+if [[ -z "$DISEASE" ]]; then
+  echo "[train] preparing datasets (clean + engineered features) ..."
+  "$PY" -m training.prepare_datasets
+fi
 
 # ---- 4. Train clinical models -----------------------------------------------
-echo "[train] training clinical models (this takes a few minutes) ..."
-"$PY" -m training.train_clinical
+if [[ -n "$DISEASE" ]]; then
+  echo "[train] training clinical model for '$DISEASE' ..."
+  "$PY" -m training.train_clinical "$DISEASE"
+else
+  echo "[train] training clinical models (this takes a few minutes) ..."
+  "$PY" -m training.train_clinical
+fi
 
 # ---- 5. Train symptom triage model ------------------------------------------
-echo "[train] training symptom triage model ..."
-"$PY" -m training.train_symptom
+# (only on a full run — a single-disease retrain leaves the symptom model alone)
+if [[ -z "$DISEASE" ]]; then
+  echo "[train] training symptom triage model ..."
+  "$PY" -m training.train_symptom
+fi
 
 # ---- 6. (optional) Bias / fairness report ------------------------------------
 if [[ "$WITH_BIAS" -eq 1 ]]; then
