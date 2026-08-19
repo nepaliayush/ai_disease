@@ -19,11 +19,6 @@ MODELS_DIR = BASE_DIR / "models"
 REPORTS_DIR = BASE_DIR / "reports"
 
 # Late (decision-level) fusion weights.
-# Clinical measurements are objective / machine-measured and directly trained on
-# each disease's own clinical dataset, so they receive the larger weight.
-# Symptoms are subjective / self-reported, hence the smaller weight.
-# This 0.7 / 0.3 split is a reasoned default; empirical tuning on a held-out
-# validation set is flagged as future work (see README methodology section).
 FUSION_W = {"clinical": 0.7, "symptom": 0.3}
 
 DISEASES = ["diabetes", "heart_disease", "liver_disease", "ckd"]
@@ -35,8 +30,6 @@ DISEASE_LABELS = {
     "ckd": "Chronic Kidney Disease",
 }
 
-# Risk bands for the fused probability (applied per-disease and to the overall
-# average).
 RISK_BANDS = [
     (0.80, "Very High"),
     (0.60, "High"),
@@ -46,10 +39,6 @@ RISK_BANDS = [
 ]
 
 # Clinical models to compare (name -> (estimator factory, is_tree_based)).
-# The full family list is shared, but only a per-disease subset is actually
-# compared/trained (see clinical_families()): CatBoost is enabled for heart
-# disease only, since it did not beat the existing families on diabetes, liver
-# or CKD.
 CLINICAL_MODELS = {
     "LogisticRegression": (lambda: LogisticRegression(max_iter=3000), False),
     "SVM": (
@@ -81,11 +70,26 @@ CLINICAL_MODELS = {
         lambda: MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=1500, random_state=42),
         False,
     ),
+    "LightGBM": (
+        lambda: _make_lgbm(),
+        True,
+    ),
 }
 
-# Per-disease model families. Every disease compares the common five; only
-# heart disease additionally gets CatBoost.
-BASE_CLINICAL_FAMILIES = ["LogisticRegression", "SVM", "RandomForest", "XGBoost", "MLP"]
+
+def _make_lgbm():
+    """Lazy import for LightGBM to avoid import errors if not installed."""
+    from lightgbm import LGBMClassifier
+    return LGBMClassifier(
+        n_estimators=300, max_depth=4, learning_rate=0.05,
+        subsample=0.9, colsample_bytree=0.9, random_state=42,
+        verbose=-1, importance_type="gain",
+    )
+
+
+# Per-disease model families.
+BASE_CLINICAL_FAMILIES = ["LogisticRegression", "SVM", "RandomForest", "XGBoost",
+                          "LightGBM", "MLP"]
 EXTRA_CLINICAL_FAMILIES = {
     "heart_disease": ["CatBoost"],
 }
@@ -95,70 +99,40 @@ def clinical_families(disease: str) -> list[str]:
     """Model family names compared/trained for a given disease."""
     return BASE_CLINICAL_FAMILIES + EXTRA_CLINICAL_FAMILIES.get(disease, [])
 
-# Number of background samples used to fit SHAP explainers at serving time.
 SHAP_BACKGROUND_SAMPLES = 100
-# Number of top features returned per disease in the SHAP explanation.
 SHAP_TOP_K = 10
-# Number of SHAP values returned if a slow (KernelExplainer) path is required.
 SHAP_KERNEL_SAMPLES = 40
 
-# Metric used to pick the deployed clinical model. CV-AUC (cross-validated ROC
-# AUC via the leakage-free pipeline) is a more honest generalization signal
-# than a single held-out test metric on these small datasets.
-MODEL_SELECTION_METRIC = "cv_auc_mean"  # metric used to pick the deployed clinical model
-MODEL_SELECTION_TIEBREAK = "roc_auc"  # tiebreak for model selection
+MODEL_SELECTION_METRIC = "cv_auc_mean"
+MODEL_SELECTION_TIEBREAK = "roc_auc"
 
 # ---------------------------------------------------------------------------
 # Per-disease preprocessing choices.
-# `scaler` is "minmax" or "standard". `log_cols` lists features that receive a
-# log1p transform before scaling (heavily right-skewed markers, e.g. liver
-# enzymes/bilirubin). `threshold_objective` is what the deployed decision
-# threshold is optimized for: "f1" (default) or "balanced_accuracy" (used for
-# the imbalanced liver set so the deployed model does not just predict the
-# majority class).
 # ---------------------------------------------------------------------------
 LIVER_LOG_COLS = [
     "total_bilirubin", "direct_bilirubin", "alkaline_phosphotase",
     "alamine_aminotransferase", "aspartate_aminotransferase",
     "ast_alt_ratio", "direct_bilirubin_ratio", "bilirubin_total",
-    "alt_ast_product",
+    "alt_ast_product", "bilirubin_alp", "injury_cholestasis_ratio",
 ]
 
 DISEASE_PREPROCESSING = {
-    # Diabetes: glucose/blood pressure/skin thickness/insulin zeros are replaced
-    # with NaN in prep and imputed with a KNN imputer (uses feature correlation,
-    # e.g. glucose <-> glucose/insulin ratio) instead of a plain median.
     "diabetes": {"scaler": "minmax", "log_cols": None, "threshold_objective": "f1",
                  "imputer": "knn"},
     "heart_disease": {"scaler": "minmax", "log_cols": None,
                       "threshold_objective": "f1",
-                      # Linear models skip external calibration by default; heart
-                      # opts in so its deployed LogisticRegression gets the same
-                      # Platt-scaled probabilities as the other deployed families.
                       "calibrate": True},
-    # Liver is imbalanced (71% positive). A balanced-accuracy threshold was
-    # tested and maximized per-class balance but dropped overall accuracy to
-    # ~65% and recall to ~58% (missing most diseased patients). The F1
-    # objective keeps the best accuracy (~72%) while SMOTE + class_weight
-    # balanced already counter the majority-class bias. Because the imbalance
-    # inflates F1/accuracy, the deployed model is selected by cross-validated
-    # PR-AUC (average precision) instead of ROC-AUC so the ranking reflects
-    # precision@recall rather than the easy majority class.
     "liver_disease": {"scaler": "minmax", "log_cols": LIVER_LOG_COLS,
                       "threshold_objective": "f1",
                       "imputer": "median",
+                      "transform_kind": "yeojohnson",
                       "selection_metric": "cv_pr_auc_mean",
                       "selection_tiebreak": "pr_auc"},
     "ckd": {"scaler": "minmax", "log_cols": None, "threshold_objective": "f1"},
 }
 
 # ---------------------------------------------------------------------------
-# Lifestyle risk adjustment (transparent, rule-based, additive).
-# The clinical training datasets do NOT contain smoking or alcohol features, so
-# these fields cannot feed the models directly. Instead they are applied as an
-# explicit, conservative additive modifier on top of the fused risk, clamped to
-# [0, 1], and fully disclosed in the response and UI. These deltas are reasoned
-# heuristics from published risk-factor evidence, NOT model outputs.
+# Lifestyle risk adjustment.
 # ---------------------------------------------------------------------------
 LIFESTYLE_ADJUSTMENT = {
     "diabetes": {
@@ -187,21 +161,7 @@ LIFESTYLE_NOTE = (
 )
 
 # ---------------------------------------------------------------------------
-# Prevalence-aware recalibration (label-shift correction).
-# The clinical datasets are heavily enriched in positive cases (e.g. the ILPD
-# liver dataset is 71% positive, CKD 63%), which inflates the models' predicted
-# probabilities for everyone — including healthy people. We correct each
-# clinical probability with the standard label-shift formula (Saerens et al.,
-# 2002) so that an average member of the *target* population maps to the target
-# prevalence while ranking is preserved:
-#
-#   w_pos = p_target / p_source,   w_neg = (1 - p_target) / (1 - p_source)
-#   p_corrected = (p * w_pos) / (p * w_pos + (1 - p) * w_neg)
-#
-# `source` = positive prevalence measured in the processed training dataset.
-# `target` = reasoned general-population prevalence (approximate, literature-
-# based; age-adjusted diagnosis rates differ). Values are disclosed in the API
-# and UI; they are tuning constants, not learned parameters.
+# Prevalence-aware recalibration.
 # ---------------------------------------------------------------------------
 PREVALENCE_SOURCE = {
     "diabetes": 0.3490, "heart_disease": 0.4587, "liver_disease": 0.7136, "ckd": 0.6250,

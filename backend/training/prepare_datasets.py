@@ -45,22 +45,30 @@ def prepare_diabetes() -> pd.DataFrame:
     ]
     df = pd.read_csv(RAW_DATA_DIR / "diabetes.csv", header=None, names=base_cols)
     # Zeros are physiologically impossible for these measures -> treat as missing
-    # (the training preprocessor then imputes them with a KNN imputer for this
-    # dataset rather than leaving literal zeros in the feature matrix).
     for c in ["glucose", "blood_pressure", "skin_thickness", "insulin", "bmi"]:
         df.loc[df[c] == 0, c] = np.nan
-    # Clinically informative interactions: glucose load relative to body size,
-    # and cumulative risk exposure terms (age x BMI, age x pregnancies).
-    # Divisions by zero / NaN propagate and are handled by imputation.
+    # --- Clinically informative interactions ---
     df["glucose_bmi"] = df["glucose"] / df["bmi"]
     df["bmi_age"] = df["bmi"] * df["age"]
     df["age_preg"] = df["age"] * df["pregnancies"]
-    # Insulin resistance proxy: high glucose / low insulin is the hallmark of
-    # insulin resistance. Guard against a division-by-zero / NaN denominator.
     df["glucose_insulin_ratio"] = np.where(
         df["insulin"] > 0, df["glucose"] / df["insulin"], np.nan)
-    # BMI risk bucket (underweight / normal / overweight / obese) as an ordinal.
     df["bmi_category"] = df["bmi"].apply(bmi_category)
+    # --- Additional engineered features ---
+    # HOMA-IR proxy (glucose * insulin / 405 is standard; we use the product
+    # as a monotonic proxy that avoids the constant denominator).
+    df["homa_proxy"] = df["glucose"] * df["insulin"]
+    # Age-stratified BMI risk: BMI effect accelerates with age.
+    df["bmi_age_risk"] = df["bmi"] * df["age"] * df["age"]
+    # Glucose relative to age: older people tolerate higher glucose before
+    # it becomes pathological, so glucose/age captures age-adjusted risk.
+    df["glucose_age"] = df["glucose"] / df["age"].replace(0, np.nan)
+    # Pedigree × age: genetic risk manifests more with age.
+    df["pedigree_age"] = df["diabetes_pedigree_function"] * df["age"]
+    # Pregnancy load: pregnancies × age captures cumulative reproductive risk.
+    df["preg_load"] = df["pregnancies"] * df["age"]
+    # Skin thickness × BMI: adiposity composite.
+    df["skin_bmi"] = df["skin_thickness"] * df["bmi"]
     df["outcome"] = df["outcome"].astype(int)
     return df[DIABETES_FEATURES + ["outcome"]]
 
@@ -77,6 +85,25 @@ def prepare_heart() -> pd.DataFrame:
         if c not in ("oldpeak",):
             df[c] = pd.to_numeric(df[c], errors="coerce")
     df["outcome"] = (df["target"] > 0).astype(int)
+    # --- Clinically informative interactions ---
+    # Age × chest pain type: atypical presentations are more ominous in older patients.
+    df["age_cp"] = df["age"] * df["cp"]
+    # Cholesterol relative to max heart rate: high chol + low thalach = high risk.
+    df["chol_thalach_ratio"] = df["chol"] / df["thalach"].replace(0, np.nan)
+    # ST depression × exercise angina: combined ischemia signal.
+    df["oldpeak_exang"] = df["oldpeak"] * df["exang"]
+    # Age × ST depression: older patients with ST changes are higher risk.
+    df["age_oldpeak"] = df["age"] * df["oldpeak"]
+    # Max heart rate deficit: (220 - age) - thalach = how far below age-predicted max.
+    df["hr_deficit"] = (220 - df["age"]) - df["thalach"]
+    # Blood pressure × cholesterol: combined metabolic risk.
+    df["bp_chol"] = df["trestbps"] * df["chol"]
+    # Number of major vessels × thalassemia: combined severity.
+    df["ca_thal"] = df["ca"] * df["thal"]
+    # Age × sex interaction: sex-specific age risk.
+    df["age_sex"] = df["age"] * df["sex"]
+    # Cholesterol age-adjusted.
+    df["chol_age"] = df["chol"] / df["age"].replace(0, np.nan)
     cols = HEART_FEATURES + ["outcome"]
     return df[cols]
 
@@ -107,7 +134,6 @@ def prepare_liver() -> pd.DataFrame:
     }
     df = df.rename(columns=rename)
     df["outcome"] = (df["dataset"] == 1).astype(int)
-    # Gender: 'Male' -> 1, 'Female' -> 0.
     df["sex"] = (df["sex"] == "Male").astype(int)
     base_cols = [
         "age", "sex", "total_bilirubin", "direct_bilirubin",
@@ -117,19 +143,26 @@ def prepare_liver() -> pd.DataFrame:
     ]
     for c in base_cols + ["outcome"]:
         df[c] = pd.to_numeric(df[c], errors="coerce")
-    # Clinically informative ratios (De Ritis AST/ALT and direct/total
-    # bilirubin). Division by zero yields NaN, handled by median imputation.
+    # --- Existing engineered features ---
     df["ast_alt_ratio"] = (
         df["aspartate_aminotransferase"] / df["alamine_aminotransferase"])
     df["direct_bilirubin_ratio"] = df["direct_bilirubin"] / df["total_bilirubin"]
-    # Additional clinically meaningful markers: total bilirubin load, albumin
-    # fraction of total protein (liver synthetic function), and hepatocellular
-    # injury load (AST x ALT product).
     df["bilirubin_total"] = (
         df["total_bilirubin"] + df["direct_bilirubin"])
     df["albumin_fraction"] = df["albumin"] / df["total_proteins"]
     df["alt_ast_product"] = (
         df["alamine_aminotransferase"] * df["aspartate_aminotransferase"])
+    # --- Additional engineered features ---
+    # Globulin = total_proteins - albumin; low globulin or high A/G ratio
+    # indicates liver synthetic dysfunction.
+    df["globulin"] = df["total_proteins"] - df["albumin"]
+    # ALP relative to age: ALP naturally rises with age.
+    df["alp_age"] = df["alkaline_phosphotase"] / df["age"].replace(0, np.nan)
+    # Bilirubin × ALP: combined cholestasis marker.
+    df["bilirubin_alp"] = df["total_bilirubin"] * df["alkaline_phosphotase"]
+    # ALT/AST product normalized by ALP: hepatocellular injury vs cholestasis.
+    df["injury_cholestasis_ratio"] = (
+        df["alt_ast_product"] / df["alkaline_phosphotase"].replace(0, np.nan))
     return df[LIVER_FEATURES + ["outcome"]]
 
 

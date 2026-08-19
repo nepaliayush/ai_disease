@@ -37,14 +37,18 @@ DIABETES_FEATURES = [
     "bmi", "diabetes_pedigree_function", "age",
     # Engineered interactions (see training/prepare_datasets.py).
     "glucose_bmi", "bmi_age", "age_preg",
-    # Insulin resistance proxy (glucose/insulin ratio), BMI risk bucket, and
-    # age x pregnancies are the requested additions.
     "glucose_insulin_ratio", "bmi_category",
+    # Additional engineered features.
+    "homa_proxy", "bmi_age_risk", "glucose_age", "pedigree_age",
+    "preg_load", "skin_bmi",
 ]
 
 HEART_FEATURES = [
     "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg", "thalach",
     "exang", "oldpeak", "slope", "ca", "thal",
+    # Engineered interactions (see training/prepare_datasets.py).
+    "age_cp", "chol_thalach_ratio", "oldpeak_exang", "age_oldpeak",
+    "hr_deficit", "bp_chol", "ca_thal", "age_sex", "chol_age",
 ]
 
 LIVER_FEATURES = [
@@ -52,8 +56,9 @@ LIVER_FEATURES = [
     "alamine_aminotransferase", "aspartate_aminotransferase", "total_proteins",
     "albumin", "albumin_globulin_ratio",
     "ast_alt_ratio", "direct_bilirubin_ratio",
-    # Additional engineered markers (see training/prepare_datasets.py).
     "bilirubin_total", "albumin_fraction", "alt_ast_product",
+    # Additional engineered features (see training/prepare_datasets.py).
+    "globulin", "alp_age", "bilirubin_alp", "injury_cholestasis_ratio",
 ]
 
 CKD_FEATURES = [

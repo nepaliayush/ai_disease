@@ -1,15 +1,16 @@
 """Clinical data preprocessing shared by training and serving.
 
 Pipeline per disease:
-  1. Median imputation of missing values
+  1. Median/KNN imputation of missing values
   2. IQR outlier detection + clipping (winsorization at Q1-1.5*IQR, Q3+1.5*IQR)
-  3. Optional log1p transform of heavily right-skewed features (liver)
+  3. Optional log1p transform or Yeo-Johnson power transform for skewed features
   4. Feature scaling (Min-Max or Standard, configurable)
-  5. SMOTE oversampling of the minority class (training only)
+  5. Optional feature selection (mutual information)
+  6. SMOTE oversampling of the minority class (training only)
 
-IQR clipping, scaling and log-transform bounds are learned on the training split
-only, so no test/query information leaks. The same fitted transformer set is
-reused at serving time by the FastAPI application.
+All transformers learn their state from the training split only, so no
+test/query information leaks. The same fitted transformer set is reused at
+serving time by the FastAPI application.
 """
 from __future__ import annotations
 
@@ -24,12 +25,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 
 class ImputerChoice(BaseEstimator, TransformerMixin):
-    """Wraps SimpleImputer(median) or KNNImputer; `kind` is searchable.
-
-    KNN imputation is used for diabetes, where the physiologically-impossible
-    zeros are real missingness and the engineered ratio features correlate with
-    their raw inputs, so nearest-neighbour imputation is more informative than a
-    column median."""
+    """Wraps SimpleImputer(median) or KNNImputer; `kind` is searchable."""
 
     def __init__(self, kind: str = "median") -> None:
         self.kind = kind
@@ -62,7 +58,6 @@ class IQRClipTransformer(BaseEstimator, TransformerMixin):
         q1 = np.nanpercentile(X, 25, axis=0)
         q3 = np.nanpercentile(X, 75, axis=0)
         iqr = q3 - q1
-        # Constant columns keep their natural range (no clipping).
         with np.errstate(divide="ignore", invalid="ignore"):
             self.lower_ = np.where(iqr > 0, q1 - 1.5 * iqr, -np.inf)
             self.upper_ = np.where(iqr > 0, q3 + 1.5 * iqr, np.inf)
@@ -91,6 +86,45 @@ class Log1pTransformer(BaseEstimator, TransformerMixin):
     def transform(self, X):
         X = np.asarray(X, dtype=float)
         if self.idx_:
+            X = X.copy()
+            X[:, self.idx_] = np.log1p(X[:, self.idx_])
+        return X
+
+
+class PowerTransformChoice(BaseEstimator, TransformerMixin):
+    """Applies Yeo-Johnson power transform to a fixed subset of columns.
+    Yeo-Johnson handles zeros and negatives (unlike Box-Cox) and finds the
+    optimal lambda to make the distribution more Gaussian, which helps
+    linear models and distance-based classifiers.
+
+    `kind`:
+      - "yeojohnson": Yeo-Johnson (default, handles all values)
+      - "log1p": log1p (original behavior, for backward compatibility)
+      - "none": passthrough
+    """
+
+    def __init__(self, columns: list[str], kind: str = "yeojohnson") -> None:
+        self.columns = columns
+        self.kind = kind
+        self.idx_ = None
+        self.pt_ = None
+
+    def fit(self, X, y=None):
+        names = list(getattr(X, "columns", range(X.shape[1])))
+        self.idx_ = [i for i, c in enumerate(names) if c in self.columns]
+        if self.kind == "yeojohnson" and self.idx_:
+            from sklearn.preprocessing import PowerTransformer
+            self.pt_ = PowerTransformer(method="yeojohnson", standardize=False)
+            X_arr = np.asarray(X, dtype=float)
+            self.pt_.fit(X_arr[:, self.idx_])
+        return self
+
+    def transform(self, X):
+        X = np.asarray(X, dtype=float)
+        if self.idx_ and self.kind == "yeojohnson" and self.pt_ is not None:
+            X = X.copy()
+            X[:, self.idx_] = self.pt_.transform(X[:, self.idx_])
+        elif self.idx_ and self.kind == "log1p":
             X = X.copy()
             X[:, self.idx_] = np.log1p(X[:, self.idx_])
         return X
@@ -129,15 +163,52 @@ class SamplerChoice(BaseEstimator):
         return self
 
 
+class FeatureSelectorChoice(BaseEstimator, TransformerMixin):
+    """Optional mutual-information-based feature selection.
+
+    `kind`:
+      - "mutual_info": SelectKBest with mutual_info_classif
+      - "none": passthrough (keep all features)
+
+    When `k` is None, keeps all features (passthrough). When `k` is an int,
+    selects the top-k features by mutual information with the target.
+    """
+
+    def __init__(self, kind: str = "none", k: int | None = None) -> None:
+        self.kind = kind
+        self.k = k
+        self.selector_ = None
+        self.selected_indices_ = None
+
+    def fit(self, X, y):
+        if self.kind == "mutual_info" and self.k is not None and self.k < X.shape[1]:
+            from sklearn.feature_selection import SelectKBest, mutual_info_classif
+            self.selector_ = SelectKBest(mutual_info_classif, k=self.k)
+            self.selector_.fit(X, y)
+            self.selected_indices_ = np.where(self.selector_.get_support())[0]
+        else:
+            self.selected_indices_ = np.arange(X.shape[1])
+        return self
+
+    def transform(self, X):
+        return np.asarray(X, dtype=float)[:, self.selected_indices_]
+
+    def get_feature_names_out(self, input_features=None):
+        if input_features is not None:
+            return np.array(input_features)[self.selected_indices_]
+        return self.selected_indices_
+
+
 @dataclass
 class ClinicalPreprocessor:
     """Container for a fitted set of preprocessors, reusable at serving time."""
 
     imputer: ImputerChoice
     clip: IQRClipTransformer
-    log: Log1pTransformer | None
+    log: Log1pTransformer | PowerTransformChoice | None
     scaler: ScalerChoice
     features: list[str]
+    selector: FeatureSelectorChoice | None = None
 
     def transform(self, X: pd.DataFrame) -> np.ndarray:
         X = X[self.features]
@@ -145,7 +216,10 @@ class ClinicalPreprocessor:
         X = self.clip.transform(X)
         if self.log is not None:
             X = self.log.transform(X)
-        return self.scaler.transform(X)
+        X = self.scaler.transform(X)
+        if self.selector is not None:
+            X = self.selector.transform(X)
+        return X
 
 
 class CalibratedClassifier:
@@ -176,44 +250,69 @@ class CalibratedClassifier:
 
 def fit_preprocessor(X: pd.DataFrame, scaler: str = "minmax",
                      log_cols: list[str] | None = None,
-                     imputer: str = "median") -> ClinicalPreprocessor:
-    """Fit imputer, IQR clipper and scaler on training data only.
+                     imputer: str = "median",
+                     transform_kind: str = "log1p",
+                     feature_selection: str = "none",
+                     feature_selection_k: int | None = None,
+                     y: np.ndarray | None = None,
+                     ) -> ClinicalPreprocessor:
+    """Fit imputer, IQR clipper, power transform, scaler, and optional feature
+    selector on training data only.
 
     `scaler` is "minmax" or "standard". `imputer` is "median" (default) or
-    "knn". `log_cols` optionally log1p-transforms a fixed subset of columns
-    (e.g. heavily skewed liver markers)."""
+    "knn". `log_cols` lists features to transform. `transform_kind` controls
+    the transform: "log1p" (original), "yeojohnson" (power transform), or
+    "none". `feature_selection` is "none" or "mutual_info"."""
     imputer_obj = ImputerChoice(imputer).fit(X)
     X_imp = imputer_obj.transform(X)
     clip = IQRClipTransformer().fit(X_imp)
     X_clip = clip.transform(X_imp)
     log = None
     if log_cols:
-        log = Log1pTransformer(log_cols).fit(X_clip)
+        if transform_kind == "yeojohnson":
+            log = PowerTransformChoice(log_cols, kind="yeojohnson").fit(X_clip)
+        else:
+            log = Log1pTransformer(log_cols).fit(X_clip)
         X_scaled_in = log.transform(X_clip)
     else:
         X_scaled_in = X_clip
     scaler_obj = ScalerChoice(scaler).fit(X_scaled_in)
+    selector = None
+    if feature_selection == "mutual_info" and feature_selection_k is not None:
+        selector = FeatureSelectorChoice(kind="mutual_info", k=feature_selection_k)
+        selector.fit(scaler_obj.transform(X_scaled_in), y)
     return ClinicalPreprocessor(
         imputer=imputer_obj, clip=clip, log=log, scaler=scaler_obj,
-        features=list(X.columns),
+        features=list(X.columns), selector=selector,
     )
 
 
 def build_clinical_pipeline(clf, scaler: str = "minmax",
                             log_cols: list[str] | None = None,
                             resampler: str = "smote",
-                            imputer: str = "median") -> ImbPipeline:
-    """Full evaluation pipeline (for cross-validation): impute -> clip -> log1p?
-    -> scale -> sample (SMOTE/SMOTEENN) -> classifier. Oversampling runs inside
-    every CV fold to avoid leakage."""
+                            imputer: str = "median",
+                            transform_kind: str = "log1p",
+                            feature_selection: str = "none",
+                            feature_selection_k: int | None = None,
+                            ) -> ImbPipeline:
+    """Full evaluation pipeline (for cross-validation): impute -> clip ->
+    power_transform? -> scale -> feature_select? -> sample -> classifier.
+    Oversampling runs inside every CV fold to avoid leakage."""
     steps = [
         ("imputer", ImputerChoice(imputer)),
         ("clip", IQRClipTransformer()),
     ]
     if log_cols:
-        steps.append(("log", Log1pTransformer(log_cols)))
+        if transform_kind == "yeojohnson":
+            steps.append(("power_transform", PowerTransformChoice(log_cols, kind="yeojohnson")))
+        else:
+            steps.append(("log", Log1pTransformer(log_cols)))
     steps += [
         ("scaler", ScalerChoice(scaler)),
+    ]
+    if feature_selection == "mutual_info" and feature_selection_k is not None:
+        steps.append(("selector", FeatureSelectorChoice(kind="mutual_info", k=feature_selection_k)))
+    steps += [
         ("resampler", SamplerChoice(resampler)),
         ("clf", clf),
     ]
