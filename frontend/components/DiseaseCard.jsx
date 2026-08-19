@@ -30,9 +30,9 @@ export default function DiseaseCard({ result, index }) {
             <h3 className="text-base font-semibold leading-tight">
               {index}. {result.label}
             </h3>
-            <p className="text-xs text-muted-foreground">
+            {/* <p className="text-xs text-muted-foreground">
               Fused clinical + symptom risk
-            </p>
+            </p> */}
           </div>
           <div className="flex flex-col items-end gap-1">
             <RiskBadge level={result.risk_level} />
@@ -44,12 +44,12 @@ export default function DiseaseCard({ result, index }) {
 
         <RiskBar pct={result.fused_pct} level={result.risk_level} />
 
-        <p className="text-xs text-muted-foreground">
+        {/* <p className="text-xs text-muted-foreground">
           fused = 0.7 × clinical ({result.clinical_pct.toFixed(1)}%) + 0.3 ×
           symptoms ({result.symptom_pct.toFixed(1)}%)
-        </p>
+        </p> */}
 
-        <section className="space-y-2 border-t pt-3">
+        {/* <section className="space-y-2 border-t pt-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Contribution
           </h4>
@@ -80,9 +80,9 @@ export default function DiseaseCard({ result, index }) {
               </span>
             </p>
           )}
-        </section>
+        </section> */}
 
-        <section className="space-y-2 border-t pt-3">
+        {/* <section className="space-y-2 border-t pt-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Top conditions (symptom model)
           </h4>
@@ -105,7 +105,7 @@ export default function DiseaseCard({ result, index }) {
               );
             })}
           </ul>
-        </section>
+        </section> */}
 
         <section className="space-y-2 border-t pt-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

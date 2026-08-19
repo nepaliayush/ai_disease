@@ -308,7 +308,7 @@ export default function Prediction() {
                   ))}
                 </div>
 
-                <Card className="shadow-none">
+                {/* <Card className="shadow-none">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base font-semibold">
                       Methodology
@@ -361,7 +361,7 @@ export default function Prediction() {
                       {results.disclaimer}
                     </p>
                   </CardContent>
-                </Card>
+                </Card> */}
               </>
             )}
           </div>
