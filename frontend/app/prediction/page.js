@@ -198,12 +198,12 @@ export default function Prediction() {
     <div className="space-y-8">
       <header className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight">Prediction</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">
+        {/* <p className="max-w-3xl text-sm text-muted-foreground">
           Fuses four clinical ML models (diabetes, heart disease, liver disease,
           chronic kidney disease) with a symptom-based triage signal. Fused risk
           = 0.7 × clinical + 0.3 × symptoms, plus a disclosed lifestyle
           adjustment. All fields are required.
-        </p>
+        </p> */}
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -282,10 +282,10 @@ export default function Prediction() {
                 <DialogTitle className="text-xl">
                   Risk Assessment Results
                 </DialogTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
+                {/* <p className="mt-1 text-sm text-muted-foreground">
                   Fused 0.7 × clinical + 0.3 × symptom scores with a disclosed
                   lifestyle adjustment.
-                </p>
+                </p> */}
               </div>
               <DialogClose asChild>
                 <Button variant="ghost" size="sm" className="shrink-0 gap-2">
