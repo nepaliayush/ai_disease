@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, UserRound, ShieldAlert, HeartPulse } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import DiseaseCard from "@/components/DiseaseCard";
@@ -29,6 +29,58 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useMetadata } from "@/hooks/useMetadata";
 import { predict } from "@/lib/api";
 
+const SAMPLE_HEALTHY = {
+  age: "28", sex: "female", blood_pressure: "118", max_heart_rate: "165", bmi: "22.5",
+  pregnancies: "0", glucose: "85", insulin: "80", skin_thickness: "22", diabetes_pedigree_function: "0.25",
+  cholesterol: "180", fasting_blood_sugar: "no", resting_ecg: "0", chest_pain_type: "0",
+  exercise_angina: "no", oldpeak: "0.0", st_slope: "0", major_vessels: "0", thalassemia: "0",
+  total_bilirubin: "0.8", direct_bilirubin: "0.2", alkaline_phosphatase: "70", alt: "25", ast: "22",
+  total_proteins: "7.0", serum_albumin: "4.2", albumin_globulin_ratio: "1.5",
+  specific_gravity: "1.020", urine_albumin: "0", urine_sugar: "0",
+  urine_rbc: "normal", pus_cell: "normal", pus_cell_clumps: "notpresent", bacteria: "notpresent",
+  blood_urea: "15", serum_creatinine: "0.8", sodium: "140", potassium: "4.2",
+  hemoglobin: "13.5", packed_cell_volume: "42", wbc_count: "7000", rbc_count: "5.0",
+  smoking_status: "never", alcohol_consumption: "none",
+  has_hypertension: "no", has_diabetes: "no", has_cad: "no",
+  appetite: "good", pedal_edema: "no", anemia: "no",
+  _symptoms: [],
+};
+
+const SAMPLE_MODERATE = {
+  age: "42", sex: "female", blood_pressure: "135", max_heart_rate: "145", bmi: "29.5",
+  pregnancies: "2", glucose: "140", insulin: "160", skin_thickness: "30", diabetes_pedigree_function: "0.45",
+  cholesterol: "230", fasting_blood_sugar: "no", resting_ecg: "1", chest_pain_type: "2",
+  exercise_angina: "no", oldpeak: "1.0", st_slope: "1", major_vessels: "0", thalassemia: "0",
+  total_bilirubin: "1.2", direct_bilirubin: "0.3", alkaline_phosphatase: "95", alt: "38", ast: "30",
+  total_proteins: "6.8", serum_albumin: "3.8", albumin_globulin_ratio: "1.2",
+  specific_gravity: "1.015", urine_albumin: "1", urine_sugar: "0",
+  urine_rbc: "normal", pus_cell: "normal", pus_cell_clumps: "notpresent", bacteria: "notpresent",
+  blood_urea: "25", serum_creatinine: "1.0", sodium: "139", potassium: "4.5",
+  hemoglobin: "12.5", packed_cell_volume: "38", wbc_count: "8500", rbc_count: "4.5",
+  smoking_status: "occasional", alcohol_consumption: "moderate",
+  has_hypertension: "no", has_diabetes: "no", has_cad: "no",
+  appetite: "good", pedal_edema: "no", anemia: "no",
+  _symptoms: ["fatigue", "headache"],
+};
+
+const SAMPLE_HIGH_RISK = {
+  age: "55", sex: "male", blood_pressure: "160", max_heart_rate: "120", bmi: "34.2",
+  pregnancies: "0", glucose: "195", insulin: "300", skin_thickness: "38", diabetes_pedigree_function: "1.2",
+  cholesterol: "280", fasting_blood_sugar: "yes", resting_ecg: "2", chest_pain_type: "3",
+  exercise_angina: "yes", oldpeak: "3.5", st_slope: "2", major_vessels: "2", thalassemia: "2",
+  total_bilirubin: "2.5", direct_bilirubin: "1.0", alkaline_phosphatase: "180", alt: "95", ast: "80",
+  total_proteins: "6.2", serum_albumin: "3.0", albumin_globulin_ratio: "0.8",
+  specific_gravity: "1.010", urine_albumin: "3", urine_sugar: "2",
+  urine_rbc: "abnormal", pus_cell: "abnormal", pus_cell_clumps: "present", bacteria: "present",
+  blood_urea: "55", serum_creatinine: "2.5", sodium: "135", potassium: "5.5",
+  hemoglobin: "10.0", packed_cell_volume: "32", wbc_count: "12000", rbc_count: "3.8",
+  smoking_status: "daily", alcohol_consumption: "heavy",
+  has_hypertension: "yes", has_diabetes: "yes", has_cad: "yes",
+  appetite: "poor", pedal_edema: "yes", anemia: "yes",
+  _symptoms: ["fatigue", "breathlessness", "chest_pain", "dizziness", "obesity",
+    "excessive_hunger", "polyuria", "family_history", "blurred_and_distorted_vision"],
+};
+
 export default function Prediction() {
   const { meta, error: metaError } = useMetadata();
   const [values, setValues] = useState({});
@@ -43,6 +95,18 @@ export default function Prediction() {
     if (!meta) return [];
     return meta.sections.flatMap((s) => s.fields.map((f) => f));
   }, [meta]);
+
+  function loadSample(profile) {
+    const samples = { healthy: SAMPLE_HEALTHY, moderate: SAMPLE_MODERATE, high_risk: SAMPLE_HIGH_RISK };
+    const s = samples[profile];
+    const { _symptoms, ...fieldValues } = s;
+    setValues(fieldValues);
+    setSymptoms(new Set(_symptoms));
+    setErrors({});
+    setResults(null);
+    setSubmitError(null);
+    document.querySelector(".form-wrap")?.scrollIntoView({ behavior: "smooth" });
+  }
 
   function handleChange(name, value) {
     setValues((v) => ({ ...v, [name]: value }));
@@ -141,6 +205,22 @@ export default function Prediction() {
           adjustment. All fields are required.
         </p>
       </header>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm font-medium text-muted-foreground">Load sample:</span>
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => loadSample("healthy")}>
+          <UserRound className="h-4 w-4" />
+          Healthy Patient
+        </Button>
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => loadSample("moderate")}>
+          <HeartPulse className="h-4 w-4" />
+          Moderate Risk
+        </Button>
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => loadSample("high_risk")}>
+          <ShieldAlert className="h-4 w-4" />
+          High Risk Patient
+        </Button>
+      </div>
 
       <form className="form-wrap space-y-6" onSubmit={handleSubmit} noValidate>
         {meta.sections.map((section, i) => (
