@@ -37,11 +37,11 @@ export default function RootLayout({ children }) {
           </header>
           <main className="mx-auto max-w-[1600px] px-6 py-8">{children}</main>
           <footer className="mx-auto max-w-[1600px] px-6 pb-8 text-center text-xs text-muted-foreground">
-            <p>
+            {/* <p>
               Built with Next.js + shadcn/ui (frontend) and FastAPI (backend).
               Public, anonymized datasets only. For research and education — not
               a medical device.
-            </p>
+            </p> */}
           </footer>
         </ThemeProvider>
       </body>
