@@ -34,7 +34,7 @@ export default function ModelMetrics({ diseases, models, metrics }) {
         <CardTitle className="text-base font-semibold">
           Model performance
         </CardTitle>
-        <CardDescription>
+        {/* <CardDescription>
           Holdout-test metrics (mean ± spread over {metrics ? "repeated random splits" : ""}) for
           each deployed clinical model. These are small public datasets with
           low majority-class baselines (diabetes 65%, heart 54%, liver 71%, CKD
@@ -43,7 +43,7 @@ export default function ModelMetrics({ diseases, models, metrics }) {
           71% base rate. The "Overfit?" column shows the training-vs-holdout
           generalization gap; a small gap means the scores are real, not
           memorized.
-        </CardDescription>
+        </CardDescription> */}
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -56,8 +56,8 @@ export default function ModelMetrics({ diseases, models, metrics }) {
                   {c.label}
                 </th>
               ))}
-              <th className="py-2 text-right font-semibold">Baseline Acc.</th>
-              <th className="py-2 text-right font-semibold">Overfit?</th>
+              {/* <th className="py-2 text-right font-semibold">Baseline Acc.</th>
+              <th className="py-2 text-right font-semibold">Overfit?</th> */}
             </tr>
           </thead>
           <tbody>
@@ -78,7 +78,7 @@ export default function ModelMetrics({ diseases, models, metrics }) {
                     {fmt(m, c.key)}
                   </td>
                 ))}
-                <td className="py-2 text-right tabular-nums">
+                {/* <td className="py-2 text-right tabular-nums">
                   {pct(m.baseline_accuracy)}
                 </td>
                 <td className="py-2 text-right tabular-nums">
@@ -95,7 +95,7 @@ export default function ModelMetrics({ diseases, models, metrics }) {
                   ) : (
                     "—"
                   )}
-                </td>
+                </td> */}
               </tr>
             ))}
           </tbody>

@@ -63,7 +63,7 @@ export default function Performance() {
         comparison={meta.model_comparison}
       />
 
-      <Card className="shadow-none">
+      {/* <Card className="shadow-none">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">
             About these numbers
@@ -92,9 +92,9 @@ export default function Performance() {
             these datasets, so treat these scores as indicative, not diagnostic.
           </p>
         </CardContent>
-      </Card>
+      </Card> */}
 
-      <Card className="shadow-none">
+      {/* <Card className="shadow-none">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">
             Cross-validation
@@ -150,9 +150,9 @@ export default function Performance() {
             reflects the curated data, not an infallible model.
           </p>
         </CardContent>
-      </Card>
+      </Card> */}
 
-      <Card className="shadow-none">
+      {/* <Card className="shadow-none">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">
             Confusion matrices (held-out test set)
@@ -203,7 +203,7 @@ export default function Performance() {
             </div>
           ))}
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 }
