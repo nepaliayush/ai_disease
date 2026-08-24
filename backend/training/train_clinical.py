@@ -5,8 +5,8 @@ For each of the four diseases:
   - 10-fold stratified cross-validation (repeated) with a leakage-free pipeline
     (impute -> IQR clip -> optional power transform -> scale -> SMOTE/SMOTEENN
     -> classifier) inside every fold
-  - seven model families: Logistic Regression, SVM, Random Forest, XGBoost,
-    LightGBM, MLP, and CatBoost (CatBoost heart-only)
+  - five model families: Logistic Regression, SVM, Random Forest, XGBoost,
+    and MLP
   - diabetes, heart disease and liver disease families are tuned with
     RandomizedSearchCV over the same leakage-free pipeline, optimizing
     cross-validated ROC-AUC (or PR-AUC for imbalanced liver)
@@ -60,8 +60,6 @@ SEARCH_ITERS = {
     "SVM": 15,
     "RandomForest": 20,
     "XGBoost": 20,
-    "LightGBM": 20,
-    "CatBoost": 15,
     "MLP": 10,
 }
 
@@ -105,30 +103,6 @@ PARAM_GRIDS = {
         "clf__min_child_weight": [1, 3, 5],
         "clf__scale_pos_weight": [1.0, 1.5, 2.0],
         "clf__reg_lambda": [0.0, 0.5, 1.0],
-    },
-    "LightGBM": {
-        "scaler__kind": ["minmax", "standard"],
-        "resampler__kind": ["smote", "smoteenn"],
-        "clf__n_estimators": [200, 400, 700],
-        "clf__max_depth": [3, 4, 5, 7, -1],
-        "clf__learning_rate": [0.01, 0.02, 0.05, 0.1],
-        "clf__subsample": [0.7, 0.8, 1.0],
-        "clf__colsample_bytree": [0.7, 0.8, 1.0],
-        "clf__min_child_samples": [5, 10, 20],
-        "clf__num_leaves": [15, 31, 50],
-        "clf__reg_lambda": [0.0, 0.5, 1.0],
-        "clf__class_weight": [None, "balanced"],
-    },
-    "CatBoost": {
-        "scaler__kind": ["minmax", "standard"],
-        "resampler__kind": ["smote", "smoteenn"],
-        "clf__iterations": [200, 400, 700],
-        "clf__depth": [3, 4, 6, 8],
-        "clf__learning_rate": [0.01, 0.02, 0.05, 0.1],
-        "clf__l2_leaf_reg": [1.0, 3.0, 5.0, 10.0],
-        "clf__subsample": [0.7, 0.8, 1.0],
-        "clf__colsample_bylevel": [0.7, 0.8, 1.0],
-        "clf__scale_pos_weight": [1.0, 1.5, 2.0],
     },
     "MLP": {
         "scaler__kind": ["minmax", "standard"],

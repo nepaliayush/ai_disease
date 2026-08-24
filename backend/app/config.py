@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from catboost import CatBoostClassifier
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -58,41 +57,16 @@ CLINICAL_MODELS = {
         ),
         True,
     ),
-    "CatBoost": (
-        lambda: CatBoostClassifier(
-            iterations=300, learning_rate=0.05, depth=4,
-            bootstrap_type="Bernoulli", verbose=0, allow_writing_files=False,
-            random_seed=42,
-        ),
-        True,
-    ),
     "MLP": (
         lambda: MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=1500, random_state=42),
         False,
     ),
-    "LightGBM": (
-        lambda: _make_lgbm(),
-        True,
-    ),
 }
-
-
-def _make_lgbm():
-    """Lazy import for LightGBM to avoid import errors if not installed."""
-    from lightgbm import LGBMClassifier
-    return LGBMClassifier(
-        n_estimators=300, max_depth=4, learning_rate=0.05,
-        subsample=0.9, colsample_bytree=0.9, random_state=42,
-        verbose=-1, importance_type="gain",
-    )
 
 
 # Per-disease model families.
-BASE_CLINICAL_FAMILIES = ["LogisticRegression", "SVM", "RandomForest", "XGBoost",
-                          "LightGBM", "MLP"]
-EXTRA_CLINICAL_FAMILIES = {
-    "heart_disease": ["CatBoost"],
-}
+BASE_CLINICAL_FAMILIES = ["LogisticRegression", "SVM", "RandomForest", "XGBoost", "MLP"]
+EXTRA_CLINICAL_FAMILIES = {}
 
 
 def clinical_families(disease: str) -> list[str]:
