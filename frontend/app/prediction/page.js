@@ -210,15 +210,15 @@ export default function Prediction() {
         <span className="text-sm font-medium text-muted-foreground">Load sample:</span>
         <Button variant="outline" size="sm" className="gap-2" onClick={() => loadSample("healthy")}>
           <UserRound className="h-4 w-4" />
-          Healthy Patient
+          Patient 1
         </Button>
         <Button variant="outline" size="sm" className="gap-2" onClick={() => loadSample("moderate")}>
-          <HeartPulse className="h-4 w-4" />
-          Moderate Risk
+          <UserRound className="h-4 w-4" />
+          Patient 2
         </Button>
         <Button variant="outline" size="sm" className="gap-2" onClick={() => loadSample("high_risk")}>
-          <ShieldAlert className="h-4 w-4" />
-          High Risk Patient
+          <UserRound className="h-4 w-4" />
+          Patient 3
         </Button>
       </div>
 
