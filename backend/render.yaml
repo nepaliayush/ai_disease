@@ -1,0 +1,22 @@
+# Render.com deployment config for the FastAPI ML backend.
+#
+# NOTE: The trained model artifacts (backend/models/*.joblib) and processed
+# data are gitignored, so the Build Command retrains everything on the host.
+# Upload this repo to GitHub, then create a "Blueprint" (render.yaml) or a
+# Web Service rooted at ./backend.
+services:
+  - type: web
+    name: disease-prediction-api
+    runtime: python
+    rootDir: backend
+    buildCommand: |
+      pip install -r requirements.txt
+      python -m scripts.download_data || true
+      python -m training.prepare_datasets
+      python -m training.train_clinical
+      python -m training.train_symptom
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
