@@ -4,11 +4,7 @@ __pycache__/
 .venv/
 *.egg-info/
 
-# Data & artifacts
-backend/data/raw/
-backend/data/processed/
-backend/models/
-backend/reports/
+
 
 # Node / Next.js
 frontend/node_modules/

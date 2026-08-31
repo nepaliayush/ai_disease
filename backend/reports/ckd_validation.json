@@ -1,0 +1,174 @@
+{
+  "deployed_model": "LogisticRegression",
+  "baseline": {
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "roc_auc": 1.0
+  },
+  "noise_robustness": [
+    {
+      "noise_sigma_frac": 0.0,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0
+    },
+    {
+      "noise_sigma_frac": 0.1,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0
+    },
+    {
+      "noise_sigma_frac": 0.25,
+      "accuracy": 0.9875,
+      "precision": 1.0,
+      "recall": 0.98,
+      "f1": 0.9899,
+      "roc_auc": 1.0
+    },
+    {
+      "noise_sigma_frac": 0.5,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0
+    },
+    {
+      "noise_sigma_frac": 1.0,
+      "accuracy": 0.9125,
+      "precision": 0.9057,
+      "recall": 0.96,
+      "f1": 0.932,
+      "roc_auc": 0.9847
+    }
+  ],
+  "shap_top_features": [
+    {
+      "feature": "diabetes_mellitus",
+      "mean_abs_shap": 0.8537,
+      "mean_shap": 0.2285
+    },
+    {
+      "feature": "specific_gravity",
+      "mean_abs_shap": 0.8386,
+      "mean_shap": -0.0042
+    },
+    {
+      "feature": "hypertension",
+      "mean_abs_shap": 0.7141,
+      "mean_shap": 0.0543
+    },
+    {
+      "feature": "appetite",
+      "mean_abs_shap": 0.3909,
+      "mean_shap": 0.0326
+    },
+    {
+      "feature": "serum_creatinine",
+      "mean_abs_shap": 0.3849,
+      "mean_shap": -0.0218
+    },
+    {
+      "feature": "hemoglobin",
+      "mean_abs_shap": 0.3641,
+      "mean_shap": 0.0168
+    },
+    {
+      "feature": "packed_cell_volume",
+      "mean_abs_shap": 0.349,
+      "mean_shap": -0.0248
+    },
+    {
+      "feature": "rbc_count",
+      "mean_abs_shap": 0.3004,
+      "mean_shap": 0.067
+    },
+    {
+      "feature": "urine_albumin",
+      "mean_abs_shap": 0.2982,
+      "mean_shap": 0.0232
+    },
+    {
+      "feature": "blood_glucose_random",
+      "mean_abs_shap": 0.2595,
+      "mean_shap": 0.0195
+    },
+    {
+      "feature": "pedal_edema",
+      "mean_abs_shap": 0.2499,
+      "mean_shap": 0.0347
+    },
+    {
+      "feature": "pus_cell",
+      "mean_abs_shap": 0.2231,
+      "mean_shap": -0.0412
+    },
+    {
+      "feature": "blood_pressure",
+      "mean_abs_shap": 0.1907,
+      "mean_shap": -0.0281
+    },
+    {
+      "feature": "urine_rbc",
+      "mean_abs_shap": 0.1833,
+      "mean_shap": -0.0228
+    },
+    {
+      "feature": "sodium",
+      "mean_abs_shap": 0.1548,
+      "mean_shap": -0.0434
+    },
+    {
+      "feature": "anemia",
+      "mean_abs_shap": 0.1214,
+      "mean_shap": 0.0039
+    },
+    {
+      "feature": "blood_urea",
+      "mean_abs_shap": 0.104,
+      "mean_shap": -0.0003
+    },
+    {
+      "feature": "urine_sugar",
+      "mean_abs_shap": 0.1032,
+      "mean_shap": 0.0278
+    },
+    {
+      "feature": "wbc_count",
+      "mean_abs_shap": 0.1016,
+      "mean_shap": 0.0048
+    },
+    {
+      "feature": "pus_cell_clumps",
+      "mean_abs_shap": 0.0767,
+      "mean_shap": -0.0426
+    },
+    {
+      "feature": "potassium",
+      "mean_abs_shap": 0.0698,
+      "mean_shap": -0.0166
+    },
+    {
+      "feature": "bacteria",
+      "mean_abs_shap": 0.0194,
+      "mean_shap": -0.0083
+    },
+    {
+      "feature": "age",
+      "mean_abs_shap": 0.0144,
+      "mean_shap": -0.0013
+    },
+    {
+      "feature": "coronary_artery_disease",
+      "mean_abs_shap": 0.0108,
+      "mean_shap": 0.0013
+    }
+  ]
+}

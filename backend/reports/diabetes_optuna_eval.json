@@ -1,0 +1,20 @@
+{
+  "metrics": {
+    "roc_auc": 0.8401851851851851,
+    "accuracy": 0.7207792207792207,
+    "precision": 0.5662650602409639,
+    "recall": 0.8703703703703703,
+    "f1": 0.6861313868613139
+  },
+  "params": {
+    "n_estimators": 727,
+    "max_depth": 6,
+    "learning_rate": 0.022168669090396442,
+    "subsample": 0.9074643924621066,
+    "colsample_bytree": 0.8475341447706972,
+    "min_child_weight": 10,
+    "gamma": 4.111595253801877,
+    "reg_lambda": 1.1881359316168443,
+    "scale_pos_weight": 2.0327812601738624
+  }
+}

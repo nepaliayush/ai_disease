@@ -1,0 +1,252 @@
+{
+  "diabetes": {
+    "age_<40": {
+      "n": 116,
+      "actual_positive_rate": 0.3103,
+      "predicted_positive_rate": 0.3362,
+      "accuracy": 0.6983,
+      "precision": 0.5128,
+      "recall": 0.5556,
+      "specificity": 0.7625,
+      "f1": 0.5333,
+      "roc_auc": 0.799
+    },
+    "age_40-60": {
+      "n": 33,
+      "actual_positive_rate": 0.5152,
+      "predicted_positive_rate": 0.697,
+      "accuracy": 0.7576,
+      "precision": 0.6957,
+      "recall": 0.9412,
+      "specificity": 0.5625,
+      "f1": 0.8,
+      "roc_auc": 0.8125
+    },
+    "age_>60": {
+      "n": 5,
+      "actual_positive_rate": 0.2,
+      "predicted_positive_rate": 0.6,
+      "accuracy": 0.6,
+      "precision": 0.3333,
+      "recall": 1.0,
+      "specificity": 0.5,
+      "f1": 0.5,
+      "roc_auc": 0.75
+    },
+    "_fairness_gaps": {
+      "max_demographic_parity_gap": 0.3608,
+      "max_equal_opportunity_gap": 0.3856,
+      "groups_evaluated": [
+        "age_<40",
+        "age_40-60"
+      ]
+    },
+    "_metadata_available": [
+      "age"
+    ],
+    "_metadata_absent": [
+      "sex",
+      "ethnicity"
+    ]
+  },
+  "heart_disease": {
+    "age_<40": {
+      "n": 5,
+      "actual_positive_rate": 0.2,
+      "predicted_positive_rate": 0.2,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "specificity": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0
+    },
+    "age_40-60": {
+      "n": 41,
+      "actual_positive_rate": 0.439,
+      "predicted_positive_rate": 0.4878,
+      "accuracy": 0.9024,
+      "precision": 0.85,
+      "recall": 0.9444,
+      "specificity": 0.8696,
+      "f1": 0.8947,
+      "roc_auc": 0.9783
+    },
+    "age_>60": {
+      "n": 15,
+      "actual_positive_rate": 0.6,
+      "predicted_positive_rate": 0.7333,
+      "accuracy": 0.8667,
+      "precision": 0.8182,
+      "recall": 1.0,
+      "specificity": 0.6667,
+      "f1": 0.9,
+      "roc_auc": 0.787
+    },
+    "sex_female": {
+      "n": 20,
+      "actual_positive_rate": 0.35,
+      "predicted_positive_rate": 0.35,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "specificity": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0
+    },
+    "sex_male": {
+      "n": 41,
+      "actual_positive_rate": 0.5122,
+      "predicted_positive_rate": 0.6098,
+      "accuracy": 0.8537,
+      "precision": 0.8,
+      "recall": 0.9524,
+      "specificity": 0.75,
+      "f1": 0.8696,
+      "roc_auc": 0.9226
+    },
+    "_fairness_gaps": {
+      "max_demographic_parity_gap": 0.3833,
+      "max_equal_opportunity_gap": 0.0556,
+      "groups_evaluated": [
+        "age_40-60",
+        "age_>60",
+        "sex_female",
+        "sex_male"
+      ]
+    },
+    "_metadata_available": [
+      "age",
+      "sex"
+    ],
+    "_metadata_absent": [
+      "ethnicity"
+    ]
+  },
+  "liver_disease": {
+    "age_<40": {
+      "n": 48,
+      "actual_positive_rate": 0.6875,
+      "predicted_positive_rate": 0.9375,
+      "accuracy": 0.7083,
+      "precision": 0.7111,
+      "recall": 0.9697,
+      "specificity": 0.1333,
+      "f1": 0.8205,
+      "roc_auc": 0.7717
+    },
+    "age_40-60": {
+      "n": 41,
+      "actual_positive_rate": 0.7317,
+      "predicted_positive_rate": 1.0,
+      "accuracy": 0.7317,
+      "precision": 0.7317,
+      "recall": 1.0,
+      "specificity": 0.0,
+      "f1": 0.8451,
+      "roc_auc": 0.8712
+    },
+    "age_>60": {
+      "n": 28,
+      "actual_positive_rate": 0.7143,
+      "predicted_positive_rate": 1.0,
+      "accuracy": 0.7143,
+      "precision": 0.7143,
+      "recall": 1.0,
+      "specificity": 0.0,
+      "f1": 0.8333,
+      "roc_auc": 0.7719
+    },
+    "sex_female": {
+      "n": 27,
+      "actual_positive_rate": 0.7037,
+      "predicted_positive_rate": 0.963,
+      "accuracy": 0.6667,
+      "precision": 0.6923,
+      "recall": 0.9474,
+      "specificity": 0.0,
+      "f1": 0.8,
+      "roc_auc": 0.7895
+    },
+    "sex_male": {
+      "n": 90,
+      "actual_positive_rate": 0.7111,
+      "predicted_positive_rate": 0.9778,
+      "accuracy": 0.7333,
+      "precision": 0.7273,
+      "recall": 1.0,
+      "specificity": 0.0769,
+      "f1": 0.8421,
+      "roc_auc": 0.8338
+    },
+    "_fairness_gaps": {
+      "max_demographic_parity_gap": 0.0625,
+      "max_equal_opportunity_gap": 0.0526,
+      "groups_evaluated": [
+        "age_<40",
+        "age_40-60",
+        "age_>60",
+        "sex_female",
+        "sex_male"
+      ]
+    },
+    "_metadata_available": [
+      "age",
+      "sex"
+    ],
+    "_metadata_absent": [
+      "ethnicity"
+    ]
+  },
+  "ckd": {
+    "age_<40": {
+      "n": 19,
+      "actual_positive_rate": 0.3158,
+      "predicted_positive_rate": 0.2105,
+      "accuracy": 0.8947,
+      "precision": 1.0,
+      "recall": 0.6667,
+      "specificity": 1.0,
+      "f1": 0.8,
+      "roc_auc": 1.0
+    },
+    "age_40-60": {
+      "n": 27,
+      "actual_positive_rate": 0.5926,
+      "predicted_positive_rate": 0.5926,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "specificity": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0
+    },
+    "age_>60": {
+      "n": 33,
+      "actual_positive_rate": 0.8182,
+      "predicted_positive_rate": 0.8182,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "specificity": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0
+    },
+    "_fairness_gaps": {
+      "max_demographic_parity_gap": 0.6077,
+      "max_equal_opportunity_gap": 0.3333,
+      "groups_evaluated": [
+        "age_<40",
+        "age_40-60",
+        "age_>60"
+      ]
+    },
+    "_metadata_available": [
+      "age"
+    ],
+    "_metadata_absent": [
+      "sex",
+      "ethnicity"
+    ]
+  }
+}
